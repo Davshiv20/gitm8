@@ -1,0 +1,10 @@
+#define pycache and env
+
+__pycache__/
+.env
+.venv/
+.vscode/
+
+
+#define .DS_Store
+.DS_Store
