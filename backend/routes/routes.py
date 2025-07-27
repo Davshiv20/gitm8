@@ -1,5 +1,5 @@
 from fastapi import FastAPI, APIRouter
-from controller.controller import get_user_by_id, get_user_recent_activity, get_user_repos as fetch_github_repos, get_user_starred_repos, get_user_topics, get_user_total_language_info
+from services.github_service import get_user_by_id, get_user_recent_activity, get_user_repos as fetch_github_repos, get_user_starred_repos, get_user_topics, get_user_total_language_info
 import asyncio      
 
 router = APIRouter()
