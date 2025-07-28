@@ -1,12 +1,22 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException
 from services.github_service import get_user_by_id, get_user_recent_activity, get_user_repos as fetch_github_repos, get_user_starred_repos, get_user_topics, get_user_total_language_info
 import asyncio      
+import logging
 
 router = APIRouter()
 
 @router.get("/users/{user_name}")
 async def get_user(user_name: str):
-    return await get_user_by_id(user_name)
+    # error handling
+    try:
+        return await get_user_by_id(user_name)
+    except Exception as e:        
+        logging.error(f"Error fetching user '{user_name}': {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"An error occurred while fetching user '{user_name}': {str(e)}"
+        )
+
 
 @router.get("/users/{user_name}/repo_names")
 async def get_user_repos(user_name: str):
