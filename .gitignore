@@ -1,6 +1,7 @@
 #define pycache and env
 
 __pycache__/
+**/__pycache__/
 .env
 .venv/
 .vscode/
