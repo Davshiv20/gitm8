@@ -1,4 +1,7 @@
 from fastapi import FastAPI, APIRouter, HTTPException
+from models import UserCompatibilityRequest
+from services.analytics_service import analyze_compatibility_metrics, get_complete_user_info
+from services.llm_service import call_llm_api, create_llm_prompt
 from services.github_service import get_user_by_id, get_user_recent_activity, get_user_repos as fetch_github_repos, get_user_starred_repos, get_user_topics, get_user_total_language_info
 import asyncio      
 import logging
@@ -112,3 +115,34 @@ async def get_topics(user_name: str):
             status_code=500,
             detail=f"An error occurred while fetching topics for user '{user_name}': {str(e)}"
         )
+
+@router.post("/api/analyze-compatibility")
+async def analyze_compatibility(request: UserCompatibilityRequest):
+    """Main endpoint for compatibility analysis"""
+    
+    if len(request.usernames) < 2:
+        raise HTTPException(status_code=400, detail="At least 2 usernames required")
+    
+    try:
+        # Gather user profiles concurrently
+        profile_tasks = [get_complete_user_info(username) for username in request.usernames]
+        user_profiles = await asyncio.gather(*profile_tasks)
+        
+        # Generate LLM analysis
+        llm_prompt = create_llm_prompt(user_profiles)
+        llm_analysis = await call_llm_api(llm_prompt)
+        
+        # Generate metrics for visualization
+        compatibility_metrics = analyze_compatibility_metrics(user_profiles)
+        
+        return {
+            "success": True,
+            "users": [profile.username for profile in user_profiles],
+            "llm_analysis": llm_analysis,
+            "compatibility_metrics": compatibility_metrics,
+            "user_profiles": [profile.dict() for profile in user_profiles]
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+

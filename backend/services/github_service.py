@@ -82,10 +82,14 @@ async def get_user_starred_repos(user_name:str):
     async with aiohttp.ClientSession(headers=HEADERS) as session:
         async with session.get(url) as response:
             response.raise_for_status()
-            #get the name and description of the repo and return in a dictionary
+            #get the name, description, and language of the repo and return in a dictionary
             repo_list = []
             for repo in await response.json():
-                repo_list.append({'name': repo['name'], 'description': repo['description']})
+                repo_list.append({
+                    'name': repo['name'], 
+                    'description': repo.get('description'),  # Use .get() to handle None
+                    'language': repo.get('language')  # Use .get() to handle None
+                })
             return repo_list
 
 async def get_user_recent_activity(user_name:str):

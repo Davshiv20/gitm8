@@ -1,42 +1,77 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-}
-
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
-
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
+/* Custom radial gradient utilities */
+@layer utilities {
+  .bg-gradient-radial {
+    background-image: radial-gradient(circle, var(--tw-gradient-stops));
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+/* Subtle floating animation for gradient orbs */
+@keyframes float-slow {
+  0%, 100% { 
+    transform: translate(var(--tw-translate-x), var(--tw-translate-y)) scale(1);
+  }
+  50% { 
+    transform: translate(var(--tw-translate-x), var(--tw-translate-y)) scale(1.1) rotate(5deg);
   }
 }
 
-.card {
-  padding: 2em;
+@keyframes float-medium {
+  0%, 100% { 
+    transform: translate(var(--tw-translate-x), var(--tw-translate-y)) scale(1);
+  }
+  33% { 
+    transform: translate(var(--tw-translate-x), var(--tw-translate-y)) scale(1.05) rotate(-3deg);
+  }
+  66% { 
+    transform: translate(var(--tw-translate-x), var(--tw-translate-y)) scale(0.95) rotate(2deg);
+  }
 }
 
-.read-the-docs {
-  color: #888;
+/* Optional: Add subtle animation to gradient orbs */
+.animate-float-slow {
+  animation: float-slow 20s ease-in-out infinite;
 }
+
+.animate-float-medium {
+  animation: float-medium 15s ease-in-out infinite;
+}
+
+/* Glassmorphism button styles */
+.glass-button {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.glass-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+/* Typography enhancements */
+h1 {
+  text-shadow: 0 0 40px rgba(255, 255, 255, 0.5);
+  letter-spacing: -0.02em;
+}
+
+/* Optional: Light mode version */
+@media (prefers-color-scheme: light) {
+  .light-mode {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  }
+  
+  .light-mode .gradient-orb-1 {
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 50%, transparent 100%);
+  }
+  
+  .light-mode .gradient-orb-2 {
+    background: radial-gradient(circle, rgba(249, 115, 22, 0.08) 0%, rgba(239, 68, 68, 0.04) 50%, transparent 100%);
+  }
+  
+  .light-mode .gradient-orb-3 {
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.06) 0%, rgba(20, 184, 166, 0.03) 50%, transparent 100%);
+  }
+}
+
