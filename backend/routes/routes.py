@@ -135,13 +135,31 @@ async def analyze_compatibility(request: UserCompatibilityRequest):
         # Generate metrics for visualization
         compatibility_metrics = analyze_compatibility_metrics(user_profiles)
         
-        return {
+        # Create enhanced response with structured data
+        enhanced_response = {
             "success": True,
             "users": [profile.username for profile in user_profiles],
             "llm_analysis": llm_analysis,
             "compatibility_metrics": compatibility_metrics,
-            "user_profiles": [profile.dict() for profile in user_profiles]
+            "user_profiles": [profile.dict() for profile in user_profiles],
+            "visualization_data": {
+                "skills_overlap": {
+                    "languages": compatibility_metrics.get("language_overlap", {}),
+                    "topics": compatibility_metrics.get("topic_overlap", {})
+                },
+                "activity_comparison": {
+                    profile.username: {
+                        "pushes": len([a for a in profile.recent_activity if a['type'] == 'PushEvent']),
+                        "prs": len([a for a in profile.recent_activity if a['type'] == 'PullRequestEvent']),
+                        "repos": len(profile.repositories),
+                        "original_repos": len([r for r in profile.repositories if not r['fork']])
+                    } for profile in user_profiles
+                },
+                "project_ideas": llm_analysis.analysis.collaboration_opportunities if hasattr(llm_analysis.analysis, 'collaboration_opportunities') else []
+            }
         }
+        
+        return enhanced_response
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")

@@ -1,8 +1,13 @@
 import asyncio
 from fastapi import HTTPException
-from services.github_service import get_user_by_id, get_user_recent_activity, get_user_repos, get_user_starred_repos, get_user_topics, get_user_total_language_info
+from services.github_service import (
+    get_user_by_id, get_user_recent_activity, get_user_repos, 
+    get_user_starred_repos, get_user_topics, get_user_total_language_info,
+    get_user_expertise_analysis
+)
 from models import UserProfile
 from typing import Dict, Any, List
+
 async def get_complete_user_info(username: str)-> UserProfile:
     try:
         basic_info_task= get_user_by_id(username)
@@ -11,19 +16,28 @@ async def get_complete_user_info(username: str)-> UserProfile:
         starred_repos_task = get_user_starred_repos(username)
         recent_activity_task = get_user_recent_activity(username)
         repositories_task = get_user_repos(username)
+        expertise_analysis_task = get_user_expertise_analysis(username)
 
-        basic_info, languages, topics, starred_repos, recent_activity, repositories = await asyncio.gather(
+        basic_info, languages, topics, starred_repos, recent_activity, repositories, expertise_analysis = await asyncio.gather(
             basic_info_task, languages_task, topics_task, 
-            starred_repos_task, recent_activity_task, repositories_task
+            starred_repos_task, recent_activity_task, repositories_task,
+            expertise_analysis_task
         )
+        
+        # Enhance basic_info with expertise analysis
+        enhanced_basic_info = {
+            **basic_info,
+            'expertise_analysis': expertise_analysis
+        }
+        
         return UserProfile(
             username=username,
-            basic_info=basic_info,
+            basic_info=enhanced_basic_info,
             languages=languages,
             topics=topics,
             starred_repos=starred_repos,
             recent_activity=recent_activity,
-            repositories=repositories
+            repositories=repositories,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching user info: {str(e)}")
@@ -35,7 +49,35 @@ def analyze_compatibility_metrics(user_profiles: List[UserProfile]) -> Dict[str,
     if len(user_profiles) < 2:
         return {}
     
-    # Language overlap analysis
+    # Expertise-based compatibility analysis
+    expertise_overlap = {}
+    collaboration_potential = {}
+    
+    for profile in user_profiles:
+        username = profile.username
+        basic_info = profile.basic_info
+        
+        if 'expertise_analysis' in basic_info:
+            expertise = basic_info['expertise_analysis']
+            
+            # Create expertise mapping
+            expertise_overlap[username] = {
+                'primary_expertise': expertise.get('primary_expertise', []),
+                'collaboration_type': expertise.get('collaboration_type', 'Unknown'),
+                'activity_consistency': expertise.get('activity_consistency', 0),
+                'engagement_patterns': expertise.get('engagement_patterns', {})
+            }
+            
+            # Calculate collaboration potential
+            engagement = expertise.get('engagement_patterns', {})
+            collaboration_potential[username] = {
+                'project_initiator_ratio': engagement.get('project_initiator_ratio', 0),
+                'contributor_ratio': engagement.get('contributor_ratio', 0),
+                'active_projects': engagement.get('active_projects', 0),
+                'recent_activity_score': engagement.get('recent_activity_score', 0)
+            }
+    
+    # Language overlap analysis (keeping for backward compatibility)
     all_languages = set()
     user_languages = {}
     
@@ -44,7 +86,6 @@ def analyze_compatibility_metrics(user_profiles: List[UserProfile]) -> Dict[str,
         user_languages[profile.username] = user_langs
         all_languages.update(user_langs.keys())
     
-    # Calculate language similarity
     common_languages = []
     language_overlap = {}
     
@@ -78,5 +119,7 @@ def analyze_compatibility_metrics(user_profiles: List[UserProfile]) -> Dict[str,
         "common_languages": common_languages,
         "common_topics": common_topics,
         "user_language_distribution": user_languages,
-        "user_topic_distribution": user_topics
+        "user_topic_distribution": user_topics,
+        "expertise_overlap": expertise_overlap,
+        "collaboration_potential": collaboration_potential
     }

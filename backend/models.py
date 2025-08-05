@@ -22,3 +22,27 @@ class UserProfile(BaseModel):
     starred_repos: Optional[List[Dict[str, Union[str, None]]]]
     recent_activity: Optional[List[Dict[str, str]]]
     repositories: List[Dict[str, Any]]
+    # profile_picture: str
+
+class ProjectIdea(BaseModel):
+    name: str
+    description: str
+    required_skills: List[str]
+    timeline: str
+    market_potential: str
+    roles: str
+
+class CollaborationAnalysis(BaseModel):
+    compatibility_score: int
+    compatibility_reasoning: str
+    shared_strengths: List[str]
+    complementary_skills: List[str]
+    collaboration_opportunities: List[str]
+    potential_challenges: List[str]
+    recommendations: List[str]
+    summary: str
+
+class CollaborationInsight(BaseModel):
+    analysis: CollaborationAnalysis
+    key_insights: List[str]
+    next_steps: List[str]

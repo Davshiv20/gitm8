@@ -15,13 +15,20 @@ function App() {
 
       const API_BASE = 'http://localhost:8000';
 
-      const [user1Res, user2Res] = await Promise.all([
-        fetch(`${API_BASE}/users/${encodeURIComponent(data.users[0])}`),
-        fetch(`${API_BASE}/users/${encodeURIComponent(data.users[1])}`)
+      const [userRes] = await Promise.all([
+        fetch(`${API_BASE}/api/analyze-compatibility`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ usernames: data.users }),
+        }),
       ])
-      if (!user1Res.ok || !user2Res.ok) {
-        throw new Error('One or both users not found on GitHub')
+      if (!userRes.ok) {
+        throw new Error('User not found on GitHub')
       }
+      const result = await userRes.json()
+      console.log(result)
       
       setIsLoading(false)
     } catch (err: any) {
