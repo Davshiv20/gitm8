@@ -124,8 +124,8 @@ async def analyze_compatibility(request: UserCompatibilityRequest):
         raise HTTPException(status_code=400, detail="At least 2 usernames required")
     
     try:
-        # Gather user profiles concurrently
-        profile_tasks = [get_complete_user_info(username) for username in request.usernames]
+        # Gather user profiles concurrently (fast path by default)
+        profile_tasks = [get_complete_user_info(username, include_optional=False) for username in request.usernames]
         user_profiles = await asyncio.gather(*profile_tasks)
         
         # Generate LLM analysis
@@ -138,10 +138,10 @@ async def analyze_compatibility(request: UserCompatibilityRequest):
         # Create enhanced response with structured data
         enhanced_response = {
             "success": True,
-            "users": [profile.username for profile in user_profiles],
+            # "users": [profile.username for profile in user_profiles],
             "llm_analysis": llm_analysis,
-            "compatibility_metrics": compatibility_metrics,
-            "user_profiles": [profile.dict() for profile in user_profiles],
+            # "compatibility_metrics": compatibility_metrics,
+            # "user_profiles": [profile.dict() for profile in user_profiles],
             "visualization_data": {
                 "skills_overlap": {
                     "languages": compatibility_metrics.get("language_overlap", {}),
