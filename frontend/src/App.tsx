@@ -2,10 +2,14 @@ import './App.css'
 import gitm8 from './assets/gitm8.png'
 import React, { useRef, useEffect, useState } from 'react'
 import GitForm from './components/GitForm'
+import { UI_TEXT, STYLING, CONFIG, API, COMPONENTS } from './components/constants'
+import { CompatibilityScoreAnalyzer } from './components/CompatibilityScoreAnalyzer'
 
 function App() {
   const radialRef = useRef<HTMLDivElement>(null)
   const [isLoading, setIsLoading]= useState(false)
+  const [compatibilityScore, setCompatibilityScore]= useState<number | null>(null)
+  const [compatibilityReasoning, setCompatibilityReasoning]= useState('no analysis yet')
   const [error, setError]= useState('')
 
   const handleSubmit = async (data: { users: string[] }) => {
@@ -13,10 +17,8 @@ function App() {
     setError('')
     try {
 
-      const API_BASE = 'http://localhost:8000';
-
       const [userRes] = await Promise.all([
-        fetch(`${API_BASE}/api/analyze-compatibility`, {
+        fetch(`${API.BASE_URL}${API.ENDPOINTS.ANALYZE_COMPATIBILITY}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -25,14 +27,22 @@ function App() {
         }),
       ])
       if (!userRes.ok) {
-        throw new Error('User not found on GitHub')
+        throw new Error(UI_TEXT.ERROR_MESSAGES.USER_NOT_FOUND)
+      }
+      if (userRes.status === 404) {
+        throw new Error(UI_TEXT.ERROR_MESSAGES.USER_NOT_FOUND)
+      }
+      if (userRes.status === 500) {
+        throw new Error(UI_TEXT.ERROR_MESSAGES.SERVER_ERROR)
       }
       const result = await userRes.json()
       console.log(result)
-      
+      console.log(result.llm_analysis.compatibility_score)
+      setCompatibilityScore(result.llm_analysis.analysis.compatibility_score)
+      setCompatibilityReasoning(result.llm_analysis.analysis.compatibility_reasoning)
       setIsLoading(false)
     } catch (err: any) {
-      setError(err.message || 'An error occurred while fetching user data.')
+      setError(err.message || UI_TEXT.ERROR_MESSAGES.GENERAL_ERROR)
       setIsLoading(false)
     }
   }
@@ -40,18 +50,15 @@ function App() {
   useEffect(() => {
     let animationFrame: number
 
-    // Initial position (in % for x, px for y)
-    let x = 50 // percent of width
-    let y = 200 // px from top
-    // Velocity in % per frame for x, px per frame for y
-    let vx = (Math.random() - 0.5) * 0.9 // slower, random direction
-    let vy = (Math.random() - 0.5) * 0.3
-
-    // Boundaries for the center of the radial
-    const minX = 10
-    const maxX = 90
-    const minY = 100
-    const maxY = 400
+    let x: number = CONFIG.RADIAL_GRADIENT.INITIAL_X
+    let y: number = CONFIG.RADIAL_GRADIENT.INITIAL_Y
+    let vx = (Math.random() - 0.5) * CONFIG.RADIAL_GRADIENT.VELOCITY_X
+    let vy = (Math.random() - 0.5) * CONFIG.RADIAL_GRADIENT.VELOCITY_Y
+    
+    const minX = CONFIG.RADIAL_GRADIENT.MIN_X
+    const maxX = CONFIG.RADIAL_GRADIENT.MAX_X
+    const minY = CONFIG.RADIAL_GRADIENT.MIN_Y
+    const maxY = CONFIG.RADIAL_GRADIENT.MAX_Y
 
     const animate = () => {
       // Move position
@@ -75,16 +82,16 @@ function App() {
       }
 
       // Occasionally randomize direction slightly for more "random" movement
-      if (Math.random() < 0.01) {
+      if (Math.random() < CONFIG.RADIAL_GRADIENT.RANDOM_CHANCE) {
         vx += (Math.random() - 0.5) * 0.1
         vy += (Math.random() - 0.5) * 0.1
         // Clamp velocity to a reasonable range
-        vx = Math.max(-0.4, Math.min(0.4, vx))
-        vy = Math.max(-0.4, Math.min(0.4, vy))
+        vx = Math.max(-CONFIG.RADIAL_GRADIENT.VELOCITY_CLAMP, Math.min(CONFIG.RADIAL_GRADIENT.VELOCITY_CLAMP, vx))
+        vy = Math.max(-CONFIG.RADIAL_GRADIENT.VELOCITY_CLAMP, Math.min(CONFIG.RADIAL_GRADIENT.VELOCITY_CLAMP, vy))
       }
 
       if (radialRef.current) {
-        radialRef.current.style.background = `radial-gradient(circle 800px at ${x}% ${y}px, #5BC0BE, transparent)`
+        radialRef.current.style.background = `radial-gradient(circle ${CONFIG.RADIAL_GRADIENT.SIZE}px at ${x}% ${y}px, ${STYLING.COLORS.ACCENT}, transparent)`
       }
       animationFrame = requestAnimationFrame(animate)
     }
@@ -108,23 +115,26 @@ function App() {
 
       <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4">
 
-        <div className="flex justify-center" style={{ marginBottom: '1rem' }}>
-          <img src={gitm8} alt="gitm8 logo" height={100} width={100} />
+        <div className="flex justify-center" style={{ marginBottom: STYLING.SPACING.MEDIUM }}>
+          <img src={gitm8} alt="gitm8 logo" height={COMPONENTS.APP.LOGO_DIMENSIONS.HEIGHT} width={COMPONENTS.APP.LOGO_DIMENSIONS.WIDTH} />
         </div>
-        <h1 className="text-5xl font-bold text-black relative" style={{ marginBottom: '1rem' }}>
-          GitM8
+        <h1 className="text-5xl font-bold text-black relative" style={{ marginBottom: STYLING.SPACING.MEDIUM }}>
+          {UI_TEXT.APP_TITLE}
           <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-black"></span>
         </h1>
         
-        <div className="text-center" style={{ marginBottom: '4rem' }}>
+        <div className="text-center" style={{ marginBottom: STYLING.SPACING.XL }}>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto font-mono tracking-tight">
-            Discover how your Github vibe matches with your friends
+            {UI_TEXT.APP_SUBTITLE}
           </p>
         </div>
         
         <div className="flex justify-center">
           <GitForm onsubmit={handleSubmit} isLoading={isLoading}  />
         </div>
+        {compatibilityScore && (
+          <CompatibilityScoreAnalyzer compatibilityScore={compatibilityScore} compatibilityReasoning={compatibilityReasoning} />
+        )}
       </div>
       
     </div>
