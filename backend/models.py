@@ -16,6 +16,7 @@ class UserCompatibilityResponse(BaseModel):
 
 class UserProfile(BaseModel):
     username: str
+    avatar_url: str
     basic_info: Dict[str, Any]
     languages: List[tuple]
     topics: List[tuple]

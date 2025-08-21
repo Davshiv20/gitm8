@@ -100,7 +100,8 @@ export const STYLING = {
     SMALL: "0.5rem",
     MEDIUM: "1rem",
     LARGE: "2rem",
-    XL: "4rem"
+    XL: "4rem",
+    XXL: "8rem"
   },
   
   // Padding

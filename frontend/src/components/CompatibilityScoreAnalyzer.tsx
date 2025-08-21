@@ -2,7 +2,7 @@ import { STYLING } from "./constants";
 import CompatibilityScore from "./CompatibilityScore";
 import Typewriter from 'typewriter-effect';
 
-export function CompatibilityScoreAnalyzer({ compatibilityScore, compatibilityReasoning }: { compatibilityScore: number, compatibilityReasoning: string }) {
+export function CompatibilityScoreAnalyzer({ compatibilityScore, compatibilityReasoning, users }: { compatibilityScore: number, compatibilityReasoning: string, users: {avatar_url: string, username: string}[] }) {
     return(
         <div
             className="flex flex-col justify-center"
@@ -12,13 +12,36 @@ export function CompatibilityScoreAnalyzer({ compatibilityScore, compatibilityRe
                 el.scrollIntoView({ behavior: "smooth", block: "center" });
               }
             }}
-          >
+          > 
+           {  /* show avatar of the users */}
+           
             <p className="flex justify-center font-bold text-lg text-gray-600 max-w-2xl mx-auto font-mono tracking-tight mb-2">
               Compatibility Score Analysis
             </p>    
-            <div className="flex justify-center" style={{ margin: STYLING.SPACING.MEDIUM }}>
-              <CompatibilityScore score={compatibilityScore} />
+            
+            <div className="flex flex-row justify-center" style={{ margin: STYLING.SPACING.MEDIUM }}>
+                
+                {users.map((user) => (
+                <div key={user.username} className="flex flex-col justify-center items-center" style={{ margin: STYLING.SPACING.MEDIUM }}>
+                  <img
+                    src={user.avatar_url}
+                    alt={user.username}
+                    className="w-10 h-10 rounded-full"
+                    style={{
+                      height: STYLING.SPACING.XXL,
+                      width: STYLING.SPACING.XXL,
+                      marginBottom: STYLING.SPACING.SMALL,
+                    }}
+                  />
+                  <span className="text-sm font-bold text-gray-700">{user.username}</span>
+                </div>
+                ))}
+              
             </div>
+            <div className="flex justify-center">
+                  <CompatibilityScore score={compatibilityScore} />
+                </div>
+            
             <p className="flex justify-center text-lg text-gray-600 max-w-2xl mx-auto font-mono tracking-tight mt-2">
               <Typewriter
                 options={{

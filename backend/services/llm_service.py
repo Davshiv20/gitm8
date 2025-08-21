@@ -1,5 +1,6 @@
 import os
 import asyncio
+import logging
 from typing import List, Protocol, Any
 from fastapi import HTTPException
 from models import UserProfile, CollaborationInsight
@@ -164,6 +165,77 @@ class LLMService:
 def create_llm_prompt(user_profiles: List[UserProfile]) -> str:
     return CollaborationPromptBuilder().build(user_profiles)
 
+async def create_quick_compatibility_prompt(user_profiles: List[UserProfile]) -> str:
+    """Create a focused prompt for just compatibility score and reasoning"""
+    prompt = """You are a GitHub compatibility expert. Analyze these developers and provide ONLY:
+
+1. **Compatibility Score (1-10)**: A single number between 1-10
+2. **Compatibility Reasoning**: 2-3 sentences explaining the score based on their GitHub profiles, it should be in a way that interests users in knowing more about their compatibility. and acknowledgde the users by their names.
+
+Format your response exactly like this:
+Score: [number]
+Reasoning: [2-3 sentences]
+
+Here are the user profiles:
+
+"""
+    for i, profile in enumerate(user_profiles, 1):
+        
+        top_languages = [f"{lang} ({bytes:,} bytes)" for lang, bytes in profile.languages[:3]]
+        
+        prompt += f"""
+## User {i}: {profile.username}
+- Top Languages: {', '.join(top_languages)}
+- Bio: {profile.basic_info.get('bio', 'No bio available')}
+"""
+    
+    prompt += "\nNow provide ONLY the score and reasoning in the exact format specified above."
+    return prompt
+
 async def call_llm_api(prompt: str) -> CollaborationInsight:
     service = LLMService()
     return await service.llm_client.generate(prompt, CollaborationInsight)
+
+async def call_llm_raw(prompt: str) -> str:
+    """Call LLM and get raw text response without schema parsing"""
+    service = LLMService()
+    # Get raw response from Gemini
+    loop = asyncio.get_event_loop()
+    try:
+        response = await loop.run_in_executor(
+            None,
+            lambda: service.llm_client.client.models.generate_content(
+                model="gemini-2.0-flash-lite",
+                contents=prompt,
+                config={
+                    "temperature": 0.3,
+                    "max_output_tokens": 500  
+                }
+            )
+        )
+        return response.text
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"LLM API call failed: {str(e)}")
+
+def parse_compatibility_response(raw_response: str) -> tuple[int, str]:
+    """Parse the raw LLM response to extract score and reasoning"""
+    try:
+        lines = raw_response.strip().split('\n')
+        score = 5  # Default fallback
+        reasoning = "Analysis based on profile data"
+        
+        for line in lines:
+            if line.startswith('Score:'):
+                try:
+                    score = int(line.split(':')[1].strip())
+                    score = max(1, min(10, score))  # Clamp between 1-10
+                except:
+                    score = 5
+            elif line.startswith('Reasoning:'):
+                reasoning = line.split(':', 1)[1].strip()
+                break
+        
+        return score, reasoning
+    except Exception as e:
+        logging.warning(f"Failed to parse LLM response: {e}")
+        return 5, "Analysis based on profile data"

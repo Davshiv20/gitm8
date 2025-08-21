@@ -1,45 +1,26 @@
 import asyncio
+import logging
 from fastapi import HTTPException
-from services.github_service import (
-    get_user_by_id, get_user_recent_activity, get_user_repos, 
-    get_user_starred_repos, get_user_topics, get_user_total_language_info,
-    get_user_expertise_analysis
-)
+from services.github_graphql_service import get_complete_user_profile_graphql
 from models import UserProfile
 from typing import Dict, Any, List
 
-async def get_complete_user_info(username: str)-> UserProfile:
+async def get_complete_user_info(username: str) -> UserProfile:
     try:
-        basic_info_task= get_user_by_id(username)
-        languages_task = get_user_total_language_info(username)
-        topics_task = get_user_topics(username)
-        starred_repos_task = get_user_starred_repos(username)
-        recent_activity_task = get_user_recent_activity(username)
-        repositories_task = get_user_repos(username)
-        expertise_analysis_task = get_user_expertise_analysis(username)
-
-        basic_info, languages, topics, starred_repos, recent_activity, repositories, expertise_analysis = await asyncio.gather(
-            basic_info_task, languages_task, topics_task, 
-            starred_repos_task, recent_activity_task, repositories_task,
-            expertise_analysis_task
-        )
-        
-        # Enhance basic_info with expertise analysis
-        enhanced_basic_info = {
-            **basic_info,
-            'expertise_analysis': expertise_analysis
-        }
-        
+        # Use GraphQL service exclusively
+        user_data = await get_complete_user_profile_graphql(username)
         return UserProfile(
-            username=username,
-            basic_info=enhanced_basic_info,
-            languages=languages,
-            topics=topics,
-            starred_repos=starred_repos,
-            recent_activity=recent_activity,
-            repositories=repositories,
+            username=user_data["username"],
+            avatar_url=user_data["avatar_url"],
+            basic_info=user_data["basic_info"],
+            languages=user_data["languages"],
+            topics=user_data["topics"],
+            starred_repos=user_data["starred_repos"],
+            recent_activity=user_data["recent_activity"],
+            repositories=user_data["repositories"],
         )
     except Exception as e:
+        logging.error(f"GraphQL service failed for {username}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error fetching user info: {str(e)}")
     
         

@@ -8,6 +8,7 @@ import { CompatibilityScoreAnalyzer } from './components/CompatibilityScoreAnaly
 function App() {
   const radialRef = useRef<HTMLDivElement>(null)
   const [isLoading, setIsLoading]= useState(false)
+  const [users, setUsers]= useState<{avatar_url: string, username: string}[]>([])
   const [compatibilityScore, setCompatibilityScore]= useState<number | null>(null)
   const [compatibilityReasoning, setCompatibilityReasoning]= useState('no analysis yet')
   const [error, setError]= useState('')
@@ -16,30 +17,30 @@ function App() {
     setIsLoading(true)
     setError('')
     try {
-
-      const [userRes] = await Promise.all([
-        fetch(`${API.BASE_URL}${API.ENDPOINTS.ANALYZE_COMPATIBILITY}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ usernames: data.users }),
-        }),
-      ])
-      if (!userRes.ok) {
+      // First, get quick compatibility score
+      const quickRes = await fetch(`${API.BASE_URL}/api/quick-compatibility`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ usernames: data.users }),
+      })
+      
+      if (!quickRes.ok) {
         throw new Error(UI_TEXT.ERROR_MESSAGES.USER_NOT_FOUND)
       }
-      if (userRes.status === 404) {
-        throw new Error(UI_TEXT.ERROR_MESSAGES.USER_NOT_FOUND)
-      }
-      if (userRes.status === 500) {
-        throw new Error(UI_TEXT.ERROR_MESSAGES.SERVER_ERROR)
-      }
-      const result = await userRes.json()
-      console.log(result)
-      console.log(result.llm_analysis.compatibility_score)
-      setCompatibilityScore(result.llm_analysis.analysis.compatibility_score)
-      setCompatibilityReasoning(result.llm_analysis.analysis.compatibility_reasoning)
+      
+      const quickResult = await quickRes.json()
+      console.log('Quick result:', quickResult)
+      
+      // Set the compatibility score immediately
+      setCompatibilityScore(quickResult.compatibility_score)
+      setCompatibilityReasoning(quickResult.compatibility_reasoning)
+      setUsers(quickResult.users)
+      
+      // Now fetch detailed analysis in background (optional)
+     
+      
       setIsLoading(false)
     } catch (err: any) {
       setError(err.message || UI_TEXT.ERROR_MESSAGES.GENERAL_ERROR)
@@ -133,7 +134,7 @@ function App() {
           <GitForm onsubmit={handleSubmit} isLoading={isLoading}  />
         </div>
         {compatibilityScore && (
-          <CompatibilityScoreAnalyzer compatibilityScore={compatibilityScore} compatibilityReasoning={compatibilityReasoning} />
+          <CompatibilityScoreAnalyzer compatibilityScore={compatibilityScore} compatibilityReasoning={compatibilityReasoning} users={users} />
         )}
       </div>
       
@@ -142,3 +143,4 @@ function App() {
 }
 
 export default App
+  

@@ -1,11 +1,12 @@
 from fastapi import FastAPI, APIRouter, HTTPException
 from models import UserCompatibilityRequest
 from services.analytics_service import analyze_compatibility_metrics, get_complete_user_info
-from services.llm_service import call_llm_api, create_llm_prompt
+from services.llm_service import call_llm_api, create_llm_prompt, create_quick_compatibility_prompt, call_llm_raw, parse_compatibility_response
 from services.github_service import get_user_by_id, get_user_recent_activity, get_user_repos as fetch_github_repos, get_user_starred_repos, get_user_topics, get_user_total_language_info
 import asyncio      
 import logging
 import aiohttp
+import datetime
 
 router = APIRouter()
 
@@ -124,8 +125,8 @@ async def analyze_compatibility(request: UserCompatibilityRequest):
         raise HTTPException(status_code=400, detail="At least 2 usernames required")
     
     try:
-        # Gather user profiles concurrently (fast path by default)
-        profile_tasks = [get_complete_user_info(username, include_optional=False) for username in request.usernames]
+        # Gather user profiles concurrently
+        profile_tasks = [get_complete_user_info(username) for username in request.usernames]
         user_profiles = await asyncio.gather(*profile_tasks)
         
         # Generate LLM analysis
@@ -138,14 +139,15 @@ async def analyze_compatibility(request: UserCompatibilityRequest):
         # Create enhanced response with structured data
         enhanced_response = {
             "success": True,
-            # "users": [profile.username for profile in user_profiles],
+            "users": [profile.username for profile in user_profiles],
             "llm_analysis": llm_analysis,
-            # "compatibility_metrics": compatibility_metrics,
-            # "user_profiles": [profile.dict() for profile in user_profiles],
+            "compatibility_metrics": compatibility_metrics,
+            "user_profiles": [profile.dict() for profile in user_profiles],
             "visualization_data": {
                 "skills_overlap": {
                     "languages": compatibility_metrics.get("language_overlap", {}),
-                    "topics": compatibility_metrics.get("topic_overlap", {})
+                    "compatibility_score": llm_analysis.analysis.compatibility_score if hasattr(llm_analysis.analysis, 'compatibility_score') else 5,
+                    "compatibility_reasoning": llm_analysis.analysis.compatibility_reasoning if hasattr(llm_analysis.analysis, 'compatibility_reasoning') else "Analysis based on profile data"
                 },
                 "activity_comparison": {
                     profile.username: {
@@ -163,4 +165,64 @@ async def analyze_compatibility(request: UserCompatibilityRequest):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+
+@router.post("/api/quick-compatibility")
+async def quick_compatibility(request: UserCompatibilityRequest):
+    """Fast endpoint for just compatibility score and reasoning"""
+    
+    if len(request.usernames) < 2:
+        raise HTTPException(status_code=400, detail="At least 2 usernames required")
+    
+    try:
+
+        profile_tasks = [get_complete_user_info(username) for username in request.usernames]
+        user_profiles = await asyncio.gather(*profile_tasks)
+    
+        quick_prompt = await create_quick_compatibility_prompt(user_profiles)
+        
+        raw_llm_response = await call_llm_raw(quick_prompt)
+        
+        compatibility_score, compatibility_reasoning = parse_compatibility_response(raw_llm_response)
+        
+        return {
+            "success": True,
+            "users": [{"username": profile.username, "avatar_url": profile.avatar_url, "recent_activity": profile.recent_activity} for profile in user_profiles],
+            "compatibility_score": compatibility_score,
+            "compatibility_reasoning": compatibility_reasoning,
+            "timestamp": datetime.datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logging.error(f"Quick compatibility failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Quick compatibility check failed: {str(e)}")
+
+@router.get("/api/test-github-connection")
+async def test_github_connection():
+    """Test endpoint to verify GitHub API connectivity"""
+    try:
+        from services.github_graphql_service import GitHubGraphQLService
+        
+        service = GitHubGraphQLService()
+        # Try a simple query to test connectivity
+        test_query = """
+        query {
+            viewer {
+                login
+            }
+        }
+        """
+        
+        result = await service._execute_query(test_query)
+        return {
+            "success": True,
+            "message": "GitHub GraphQL connection successful",
+            "user": result.get("viewer", {}).get("login", "Unknown")
+        }
+    except Exception as e:
+        logging.error(f"GitHub connection test failed: {str(e)}")
+        return {
+            "success": False,
+            "message": f"GitHub connection failed: {str(e)}",
+            "error": str(e)
+        }
 
