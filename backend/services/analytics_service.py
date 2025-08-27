@@ -23,6 +23,51 @@ async def get_complete_user_info(username: str) -> UserProfile:
         logging.error(f"GraphQL service failed for {username}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error fetching user info: {str(e)}")
     
+
+async def create_radar_chart_data(user_profiles: List[UserProfile]) -> Dict[str, Any]:
+    """
+    Create radar chart data for the given user profiles.
+    Returns a list of dicts like: {"language": "js", "shivam": 7, "ds": 0}
+    Only the top 7 languages (by total usage across all users) are included.
+    Instead of raw percentages, assigns reversed ranks per user (7 = most used, 1 = least used among top 7, 0 = not used).
+    """
+    # Convert profile.languages to dict if not already
+    for profile in user_profiles:
+        profile.languages = dict(profile.languages)
+
+    # Aggregate total usage for each language across all users
+    language_totals = {}
+    for profile in user_profiles:
+        for lang, count in profile.languages.items():
+            language_totals[lang] = language_totals.get(lang, 0) + count
+
+    # Pick top 7 languages by total usage
+    top_languages = sorted(language_totals.items(), key=lambda x: x[1], reverse=True)[:10]
+    top_language_names = [lang for lang, _ in top_languages]
+
+    # For each user, assign reversed ranks to their languages (7 = most used, 1 = least used among top 7)
+    user_language_ranks = {}
+    for profile in user_profiles:
+
+        user_top_langs = [(lang, count) for lang, count in profile.languages.items() if lang in top_language_names]
+        sorted_langs = sorted(user_top_langs, key=lambda x: x[1], reverse=True)
+        n = len(sorted_langs)
+        ranks = {}
+        for idx, (lang, _) in enumerate(sorted_langs):
+            # Highest usage gets highest rank (n), next gets n-1, ..., lowest gets 1
+            ranks[lang] = n - idx
+        user_language_ranks[profile.username] = ranks
+
+    # Prepare radar chart data for only the top 7 languages, using reversed ranks
+    radar_data = []
+    for lang in top_language_names:
+        lang_entry = {"language": lang}
+        for profile in user_profiles:
+            ranks = user_language_ranks.get(profile.username, {})
+            lang_entry[profile.username] = ranks.get(lang, 0)  # 0 if not present
+        radar_data.append(lang_entry)
+
+    return {"languages": radar_data}
         
 def analyze_compatibility_metrics(user_profiles: List[UserProfile]) -> Dict[str, Any]:
     """Generate numerical metrics for Chart.js visualization"""
