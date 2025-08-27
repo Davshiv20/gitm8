@@ -1,8 +1,18 @@
 import { STYLING } from "./constants";
 import CompatibilityScore from "./CompatibilityScore";
 import Typewriter from 'typewriter-effect';
+import RadarChart from "./RadarChart";
 
-export function CompatibilityScoreAnalyzer({ compatibilityScore, compatibilityReasoning, users }: { compatibilityScore: number, compatibilityReasoning: string, users: {avatar_url: string, username: string}[] }) {
+interface RadarChartData {
+  languages: Array<{ language: string; [username: string]: number | string }>
+}
+
+export function CompatibilityScoreAnalyzer({ compatibilityScore, compatibilityReasoning, users, radarChartData }: { 
+  compatibilityScore: number, 
+  compatibilityReasoning: string, 
+  users: {avatar_url: string, username: string}[], 
+  radarChartData: RadarChartData | null 
+}) {
     return(
         <div
             className="flex flex-col justify-center"
@@ -13,8 +23,9 @@ export function CompatibilityScoreAnalyzer({ compatibilityScore, compatibilityRe
               }
             }}
           > 
-           {  /* show avatar of the users */}
-           
+
+            
+            
             <p className="flex justify-center font-bold text-lg text-gray-600 max-w-2xl mx-auto font-mono tracking-tight mb-2">
               Compatibility Score Analysis
             </p>    
@@ -36,12 +47,13 @@ export function CompatibilityScoreAnalyzer({ compatibilityScore, compatibilityRe
                   <span className="text-sm font-bold text-gray-700">{user.username}</span>
                 </div>
                 ))}
-              
             </div>
+            {radarChartData && radarChartData.languages && radarChartData.languages.length > 0 && (
+            <RadarChart data={radarChartData} />
+               )}
             <div className="flex justify-center">
                   <CompatibilityScore score={compatibilityScore} />
-                </div>
-            
+            </div>
             <p className="flex justify-center text-lg text-gray-600 max-w-2xl mx-auto font-mono tracking-tight mt-2">
               <Typewriter
                 options={{
@@ -55,5 +67,7 @@ export function CompatibilityScoreAnalyzer({ compatibilityScore, compatibilityRe
                 }}
               />
             </p>
-          </div>    
+            
+          </div> 
+          
     )}

@@ -2,8 +2,14 @@ import './App.css'
 import gitm8 from './assets/gitm8.png'
 import React, { useRef, useEffect, useState } from 'react'
 import GitForm from './components/GitForm'
-import { UI_TEXT, STYLING, CONFIG, API, COMPONENTS } from './components/constants'
+import { UI_TEXT, STYLING, CONFIG, API, COMPONENTS,LANDING_CARD_TEXT } from './components/constants'
 import { CompatibilityScoreAnalyzer } from './components/CompatibilityScoreAnalyzer'
+import LandingCard from './components/LandingCard'
+import { LandingCardWrapper } from './components/LandingCardWrapper'
+
+interface RadarChartData {
+  languages: Array<{ language: string; [username: string]: number | string }>
+}
 
 function App() {
   const radialRef = useRef<HTMLDivElement>(null)
@@ -12,12 +18,13 @@ function App() {
   const [compatibilityScore, setCompatibilityScore]= useState<number | null>(null)
   const [compatibilityReasoning, setCompatibilityReasoning]= useState('no analysis yet')
   const [error, setError]= useState('')
+  const [isRadarChartData, setRadarChartData]= useState<RadarChartData | null>(null)
+  const [showLandingCards, setShowLandingCards] = useState(false)
 
   const handleSubmit = async (data: { users: string[] }) => {
     setIsLoading(true)
     setError('')
     try {
-      // First, get quick compatibility score
       const quickRes = await fetch(`${API.BASE_URL}/api/quick-compatibility`, {
         method: 'POST',
         headers: {
@@ -37,9 +44,7 @@ function App() {
       setCompatibilityScore(quickResult.compatibility_score)
       setCompatibilityReasoning(quickResult.compatibility_reasoning)
       setUsers(quickResult.users)
-      
-      // Now fetch detailed analysis in background (optional)
-     
+      setRadarChartData(quickResult.radar_chart_data)
       
       setIsLoading(false)
     } catch (err: any) {
@@ -69,7 +74,7 @@ function App() {
       // Deflect if out of bounds
       if (x < minX) {
         x = minX
-        vx = Math.abs(vx) * (0.7 + Math.random() * 0.6) // randomize speed a bit
+        vx = Math.abs(vx) * (0.7 + Math.random() * 0.6)
       } else if (x > maxX) {
         x = maxX
         vx = -Math.abs(vx) * (0.7 + Math.random() * 0.6)
@@ -82,15 +87,6 @@ function App() {
         vy = -Math.abs(vy) * (0.7 + Math.random() * 0.6)
       }
 
-      // Occasionally randomize direction slightly for more "random" movement
-      if (Math.random() < CONFIG.RADIAL_GRADIENT.RANDOM_CHANCE) {
-        vx += (Math.random() - 0.5) * 0.1
-        vy += (Math.random() - 0.5) * 0.1
-        // Clamp velocity to a reasonable range
-        vx = Math.max(-CONFIG.RADIAL_GRADIENT.VELOCITY_CLAMP, Math.min(CONFIG.RADIAL_GRADIENT.VELOCITY_CLAMP, vx))
-        vy = Math.max(-CONFIG.RADIAL_GRADIENT.VELOCITY_CLAMP, Math.min(CONFIG.RADIAL_GRADIENT.VELOCITY_CLAMP, vy))
-      }
-
       if (radialRef.current) {
         radialRef.current.style.background = `radial-gradient(circle ${CONFIG.RADIAL_GRADIENT.SIZE}px at ${x}% ${y}px, ${STYLING.COLORS.ACCENT}, transparent)`
       }
@@ -101,8 +97,13 @@ function App() {
     return () => cancelAnimationFrame(animationFrame)
   }, [])
 
+  useEffect(() => {
+    const timer = setTimeout(() => setShowLandingCards(true), 1000)
+    return () => clearTimeout(timer)
+  }, [])
+
   return (
-    <div className="relative min-h-screen w-full">
+    <div className="relative min-h-screen w-full overflow-hidden">
       <div className="fixed inset-0 -z-10 bg-slate h-full w-full">
         <div
           ref={radialRef}
@@ -113,18 +114,22 @@ function App() {
           }}
         ></div>
       </div>
+      
+      <div className="pointer-events-none hidden md:block" aria-hidden>
+        <LandingCardWrapper showLandingCards= {showLandingCards}/>
+      </div>
 
-      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4">
+      <div className="relative z-10 flex blur-sm transition duration-1000 delay-1000 hover:blur-none flex-col items-center justify-center min-h-screen px-4">
 
         <div className="flex justify-center" style={{ marginBottom: STYLING.SPACING.MEDIUM }}>
           <img src={gitm8} alt="gitm8 logo" height={COMPONENTS.APP.LOGO_DIMENSIONS.HEIGHT} width={COMPONENTS.APP.LOGO_DIMENSIONS.WIDTH} />
         </div>
-        <h1 className="text-5xl font-bold text-black relative" style={{ marginBottom: STYLING.SPACING.MEDIUM }}>
+        <h1 className="text-5xl font-bold  text-black relative" style={{ marginBottom: STYLING.SPACING.MEDIUM }}>
           {UI_TEXT.APP_TITLE}
           <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-black"></span>
         </h1>
         
-        <div className="text-center" style={{ marginBottom: STYLING.SPACING.XL }}>
+        <div className="text-center" style={{ marginBottom: STYLING.SPACING.LARGE }}>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto font-mono tracking-tight">
             {UI_TEXT.APP_SUBTITLE}
           </p>
@@ -133,8 +138,9 @@ function App() {
         <div className="flex justify-center">
           <GitForm onsubmit={handleSubmit} isLoading={isLoading}  />
         </div>
+        <div className="flex justify-between w-full max-w-4xl mt-12"></div>
         {compatibilityScore && (
-          <CompatibilityScoreAnalyzer compatibilityScore={compatibilityScore} compatibilityReasoning={compatibilityReasoning} users={users} />
+          <CompatibilityScoreAnalyzer compatibilityScore={compatibilityScore} compatibilityReasoning={compatibilityReasoning} users={users}   radarChartData={isRadarChartData}/>
         )}
       </div>
       

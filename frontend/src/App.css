@@ -75,3 +75,107 @@ h1 {
   }
 }
 
+/* Add these styles to your App.css for enhanced landing card effects */
+
+.landing-card-container {
+  position: relative;
+  overflow: visible;
+}
+
+/* Create a clipping mask effect for the cards */
+.card-clip-left {
+  clip-path: polygon(0% 0%, 85% 0%, 100% 50%, 85% 100%, 0% 100%);
+}
+
+.card-clip-right {
+  clip-path: polygon(15% 0%, 100% 0%, 100% 100%, 15% 100%, 0% 50%);
+}
+
+/* Glassmorphism effect for modern look */
+.glass-card {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+}
+
+/* Floating animation for cards */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.floating-card {
+  animation: float 4s ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+
+/* Cut-off text effect */
+.text-cutoff {
+  position: relative;
+  overflow: hidden;
+}
+
+.text-cutoff::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 30px;
+  background: linear-gradient(to right, transparent, white);
+  pointer-events: none;
+}
+
+/* Partial visibility overlay */
+.partial-overlay-left {
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    transparent 60%,
+    rgba(255, 255, 255, 0.3) 80%,
+    rgba(255, 255, 255, 0.8) 90%,
+    white 100%
+  );
+}
+
+.partial-overlay-right {
+  background: linear-gradient(
+    to left,
+    transparent 0%,
+    transparent 60%,
+    rgba(255, 255, 255, 0.3) 80%,
+    rgba(255, 255, 255, 0.8) 90%,
+    white 100%
+  );
+}
+
+/* HTML: <div class="loader"></div> */
+.loader {
+  width: 10px;
+  height: 25px;
+  border: 1px solid;
+  box-sizing: border-box;
+  border-radius: 50%;
+  display: grid;
+  animation: l2 2s infinite linear;
+}
+.loader:before,
+.loader:after {
+  content: "";
+  grid-area: 1/1;
+  border: inherit;
+  border-radius: 50%;
+  animation: inherit;
+  animation-duration: 3s;
+}
+.loader:after {
+  --s:-1;
+}
+@keyframes l2 {
+   100% {transform:rotate(calc(var(--s,1)*1turn))}
+}

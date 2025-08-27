@@ -118,7 +118,14 @@ export default function GitForm({ onsubmit, isLoading, minUsers=CONFIG.USER_LIMI
               : 'bg-black hover:bg-gray-800 text-white hover:shadow-lg active:scale-95'
           }`}
         >
-          {isLoading ? UI_TEXT.BUTTON_TEXT.SUBMIT_LOADING : `${UI_TEXT.BUTTON_TEXT.SUBMIT} ${users.filter(u => u.trim()).length} Users`}
+          {isLoading ? (
+            <div className="flex items-center justify-center gap-2">
+              <div className="loader"></div>
+
+            </div>
+          ) : (
+            `${UI_TEXT.BUTTON_TEXT.SUBMIT} ${users.filter(u => u.trim()).length} Users`
+          )}
         </button>
       </div>
     </div>
