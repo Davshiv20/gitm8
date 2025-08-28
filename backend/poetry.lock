@@ -206,6 +206,18 @@ tests = ["cloudpickle ; platform_python_implementation == \"CPython\"", "hypothe
 tests-mypy = ["mypy (>=1.11.1) ; platform_python_implementation == \"CPython\" and python_version >= \"3.10\"", "pytest-mypy-plugins ; platform_python_implementation == \"CPython\" and python_version >= \"3.10\""]
 
 [[package]]
+name = "backoff"
+version = "2.2.1"
+description = "Function decoration for backoff and retry"
+optional = false
+python-versions = ">=3.7,<4.0"
+groups = ["main"]
+files = [
+    {file = "backoff-2.2.1-py3-none-any.whl", hash = "sha256:63579f9a0628e06278f7e47b7d7d5b6ce20dc65c5e96a6f3ca99a6adca0396e8"},
+    {file = "backoff-2.2.1.tar.gz", hash = "sha256:03f829f5bb1923180821643f8753b0502c3b682293992485b0eef2807afa5cba"},
+]
+
+[[package]]
 name = "cachetools"
 version = "5.5.2"
 description = "Extensible memoizing collections and decorators"
@@ -565,6 +577,47 @@ websockets = ">=13.0.0,<15.1.0"
 
 [package.extras]
 aiohttp = ["aiohttp (<4.0.0)"]
+
+[[package]]
+name = "gql"
+version = "3.5.3"
+description = "GraphQL client for Python"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "gql-3.5.3-py2.py3-none-any.whl", hash = "sha256:e1fcbde2893fcafdd28114ece87ff47f1cc339a31db271fc4e1d528f5a1d4fbc"},
+    {file = "gql-3.5.3.tar.gz", hash = "sha256:393b8c049d58e0d2f5461b9d738a2b5f904186a40395500b4a84dd092d56e42b"},
+]
+
+[package.dependencies]
+anyio = ">=3.0,<5"
+backoff = ">=1.11.1,<3.0"
+graphql-core = ">=3.2,<3.2.7"
+yarl = ">=1.6,<2.0"
+
+[package.extras]
+aiohttp = ["aiohttp (>=3.8.0,<4) ; python_version <= \"3.11\"", "aiohttp (>=3.9.0b0,<4) ; python_version > \"3.11\""]
+all = ["aiohttp (>=3.8.0,<4) ; python_version <= \"3.11\"", "aiohttp (>=3.9.0b0,<4) ; python_version > \"3.11\"", "botocore (>=1.21,<2)", "httpx (>=0.23.1,<1)", "requests (>=2.26,<3)", "requests-toolbelt (>=1.0.0,<2)", "websockets (>=10,<12)"]
+botocore = ["botocore (>=1.21,<2)"]
+dev = ["aiofiles", "aiohttp (>=3.8.0,<4) ; python_version <= \"3.11\"", "aiohttp (>=3.9.0b0,<4) ; python_version > \"3.11\"", "black (==22.3.0)", "botocore (>=1.21,<2)", "check-manifest (>=0.42,<1)", "flake8 (==3.8.1)", "httpx (>=0.23.1,<1)", "isort (==4.3.21)", "mock (==4.0.2)", "mypy (==0.910)", "parse (==1.15.0)", "pytest (==7.4.2)", "pytest-asyncio (==0.21.1)", "pytest-console-scripts (==1.3.1)", "pytest-cov (==3.0.0)", "requests (>=2.26,<3)", "requests-toolbelt (>=1.0.0,<2)", "sphinx (>=5.3.0,<6)", "sphinx-argparse (==0.2.5)", "sphinx-rtd-theme (>=0.4,<1)", "types-aiofiles", "types-mock", "types-requests", "vcrpy (==4.4.0) ; python_version <= \"3.8\"", "vcrpy (==7.0.0) ; python_version > \"3.8\"", "websockets (>=10,<12)"]
+httpx = ["httpx (>=0.23.1,<1)"]
+requests = ["requests (>=2.26,<3)", "requests-toolbelt (>=1.0.0,<2)"]
+test = ["aiofiles", "aiohttp (>=3.8.0,<4) ; python_version <= \"3.11\"", "aiohttp (>=3.9.0b0,<4) ; python_version > \"3.11\"", "botocore (>=1.21,<2)", "httpx (>=0.23.1,<1)", "mock (==4.0.2)", "parse (==1.15.0)", "pytest (==7.4.2)", "pytest-asyncio (==0.21.1)", "pytest-console-scripts (==1.3.1)", "pytest-cov (==3.0.0)", "requests (>=2.26,<3)", "requests-toolbelt (>=1.0.0,<2)", "vcrpy (==4.4.0) ; python_version <= \"3.8\"", "vcrpy (==7.0.0) ; python_version > \"3.8\"", "websockets (>=10,<12)"]
+test-no-transport = ["aiofiles", "mock (==4.0.2)", "parse (==1.15.0)", "pytest (==7.4.2)", "pytest-asyncio (==0.21.1)", "pytest-console-scripts (==1.3.1)", "pytest-cov (==3.0.0)", "vcrpy (==4.4.0) ; python_version <= \"3.8\"", "vcrpy (==7.0.0) ; python_version > \"3.8\""]
+websockets = ["websockets (>=10,<12)"]
+
+[[package]]
+name = "graphql-core"
+version = "3.2.6"
+description = "GraphQL implementation for Python, a port of GraphQL.js, the JavaScript reference implementation for GraphQL."
+optional = false
+python-versions = "<4,>=3.6"
+groups = ["main"]
+files = [
+    {file = "graphql_core-3.2.6-py3-none-any.whl", hash = "sha256:78b016718c161a6fb20a7d97bbf107f331cd1afe53e45566c59f776ed7f0b45f"},
+    {file = "graphql_core-3.2.6.tar.gz", hash = "sha256:c08eec22f9e40f0bd61d805907e3b3b1b9a320bc606e23dc145eebca07c8fbab"},
+]
 
 [[package]]
 name = "h11"
@@ -1455,27 +1508,11 @@ use-chardet-on-py3 = ["chardet (>=3.0.2,<6)"]
 
 [[package]]
 name = "rsa"
-version = "4.2"
-description = "Pure-Python RSA implementation"
-optional = false
-python-versions = "*"
-groups = ["main"]
-markers = "python_version >= \"3.12\""
-files = [
-    {file = "rsa-4.2.tar.gz", hash = "sha256:aaefa4b84752e3e99bd8333a2e1e3e7a7da64614042bd66f775573424370108a"},
-]
-
-[package.dependencies]
-pyasn1 = ">=0.1.3"
-
-[[package]]
-name = "rsa"
 version = "4.9.1"
 description = "Pure-Python RSA implementation"
 optional = false
 python-versions = "<4,>=3.6"
 groups = ["main"]
-markers = "python_version < \"3.12\""
 files = [
     {file = "rsa-4.9.1-py3-none-any.whl", hash = "sha256:68635866661c6836b8d39430f97a996acbd61bfa49406748ea243539fe239762"},
     {file = "rsa-4.9.1.tar.gz", hash = "sha256:e7bdbfdb5497da4c07dfd35530e1a902659db6ff241e39d9953cad06ebd0ae75"},
@@ -1999,5 +2036,5 @@ propcache = ">=0.2.1"
 
 [metadata]
 lock-version = "2.1"
-python-versions = ">=3.10"
-content-hash = "22ddf03d731ddfb17c3ebe6e9429d98764b2cd87d2da046e94f62109619919aa"
+python-versions = ">=3.10, <4.0"
+content-hash = "d44d82a467d3204904a878e86e103d6dcdfecb19a95dcacb83f69d27ffba086c"
