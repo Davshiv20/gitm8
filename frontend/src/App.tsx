@@ -1,10 +1,9 @@
 import './App.css'
 import gitm8 from './assets/gitm8.png'
-import React, { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import GitForm from './components/GitForm'
-import { UI_TEXT, STYLING, CONFIG, API, COMPONENTS,LANDING_CARD_TEXT } from './components/constants'
+import { UI_TEXT, STYLING, CONFIG, API, COMPONENTS} from './components/constants'
 import { CompatibilityScoreAnalyzer } from './components/CompatibilityScoreAnalyzer'
-import LandingCard from './components/LandingCard'
 import { LandingCardWrapper } from './components/LandingCardWrapper'
 
 interface RadarChartData {
@@ -17,7 +16,7 @@ function App() {
   const [users, setUsers]= useState<{avatar_url: string, username: string}[]>([])
   const [compatibilityScore, setCompatibilityScore]= useState<number | null>(null)
   const [compatibilityReasoning, setCompatibilityReasoning]= useState('no analysis yet')
-  const [error, setError]= useState('')
+  const [, setError]= useState('')
   const [isRadarChartData, setRadarChartData]= useState<RadarChartData | null>(null)
   const [showLandingCards, setShowLandingCards] = useState(false)
 
