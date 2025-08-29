@@ -101,7 +101,9 @@ export const UI_TEXT = {
     USER_COUNT_RANGE: "Please enter between {min} and {max} usernames",
     USER_NOT_FOUND: "User not found on GitHub",
     SERVER_ERROR: "An error occurred while fetching user data.",
-    GENERAL_ERROR: "An error occurred while fetching user data."
+    GENERAL_ERROR: "An error occurred while fetching user data.",
+    FETCH_FAIL: "Failed to fetch GitHub user. Please check the username.",
+    USERNAME_EXISTS : "This User has already been added"
   },
   
   // Button Text
@@ -177,7 +179,7 @@ export const STYLING = {
   PADDING: {
     FORM_CONTAINER: "2rem",
     FORM_HEADER: "2rem",
-    INPUT_LEFT: "5.8rem",
+    INPUT_LEFT: "6.5rem",
     INPUT_TOP: "0.45rem",
     INPUT_BOTTOM: "0.5rem"
   },
