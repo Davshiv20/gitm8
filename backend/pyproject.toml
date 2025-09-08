@@ -6,7 +6,7 @@ authors = [
     {name = "Davshiv20",email = "shivamdave2903@gmail.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10, <4.0"
 dependencies = [
     "fastapi (>=0.116.1,<0.117.0)",
     "uvicorn[standard] (>=0.35.0,<0.36.0)",
@@ -18,8 +18,12 @@ dependencies = [
 ]
 
 [tool.poetry]
-package-mode = false
+package-mode = true
+
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+dev = "dev:main"

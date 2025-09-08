@@ -1,16 +1,15 @@
 import React, { useState } from 'react'
+import { Form } from 'react-router'
 import { Plus, X } from 'lucide-react'
 import { UI_TEXT, STYLING, CONFIG } from './constants'
 import type { UserCardType } from './types'
 
 
 export default function GitForm({
-  onsubmit,
   isLoading,
   minUsers = CONFIG.USER_LIMITS.MIN_USERS,
   maxUsers = CONFIG.USER_LIMITS.MAX_USERS,
 }: {
-  onsubmit: (data: { users: string[] }) => void
   isLoading: boolean
   minUsers?: number
   maxUsers?: number
@@ -77,8 +76,8 @@ export default function GitForm({
   }
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
     if (users.length < minUsers || users.length > maxUsers) {
+      e.preventDefault()
       setError(
         UI_TEXT.ERROR_MESSAGES.USER_COUNT_RANGE.replace(
           '{min}',
@@ -88,7 +87,6 @@ export default function GitForm({
       return
     }
     setError('')
-    onsubmit({ users: users.map((u) => u.username) })
   }
 
  
@@ -139,7 +137,7 @@ export default function GitForm({
           </h2>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <Form method="post" onSubmit={handleSubmit}>
           <div className="flex flex-col gap-4">
             {users.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-4">
@@ -192,6 +190,13 @@ export default function GitForm({
             </div>
           )}
 
+          {/* Hidden input to pass usernames to router action */}
+          <input
+            type="hidden"
+            name="usernames"
+            value={users.map(u => u.username).join(',')}
+          />
+
           <div className="mt-6">
             <button
               type="submit"
@@ -217,7 +222,7 @@ export default function GitForm({
               )}
             </button>
           </div>
-        </form>
+        </Form>
       </div>
     </div>
   )

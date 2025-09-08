@@ -220,7 +220,7 @@ function App() {
         </div>
         
         <div className="flex justify-center">
-          <GitForm onsubmit={handleSubmit} isLoading={state.isLoading} />
+          <GitForm isLoading={state.isLoading} />
         </div>
         
         <div className="flex justify-between w-full max-w-4xl mt-12" />
