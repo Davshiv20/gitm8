@@ -251,9 +251,9 @@ const getBaseURL = () => {
     return import.meta.env.VITE_API_URL
   }
   
-  // In production (Vercel), use relative URLs to call the same domain
+  // In production (Vercel), use the backend URL
   if (import.meta.env.PROD) {
-    return ''
+    return 'https://gitm8-be.vercel.app'
   }
   
   // In development, use localhost
