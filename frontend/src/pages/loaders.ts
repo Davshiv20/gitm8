@@ -16,6 +16,7 @@ type QuickResult = {
   compatibility_reasoning: string
   users: User[]
   radar_chart_data: RadarChartData
+  comparison_data?: any
 }
 
 // Loader for results page - fetches data based on session storage
@@ -66,7 +67,8 @@ export async function compatibilityAction({ request }: ActionFunctionArgs) {
       score: result.compatibility_score,
       reasoning: result.compatibility_reasoning,
       users: result.users,
-      radarData: result.radar_chart_data
+      radarData: result.radar_chart_data,
+      comparisonData: result.comparison_data
     }
 
     sessionStorage.setItem('compatibilityResults', JSON.stringify(formattedResult))

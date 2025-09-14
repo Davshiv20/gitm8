@@ -68,6 +68,146 @@ async def create_radar_chart_data(user_profiles: List[UserProfile]) -> Dict[str,
         radar_data.append(lang_entry)
 
     return {"languages": radar_data}
+
+def create_comparison_metrics_data(user_profiles: List[UserProfile]) -> Dict[str, Any]:
+    """
+    Create comparison metrics data for line charts showing different parameters of comparison.
+    Returns structured data for activity metrics, repository stats, and other comparison points.
+    """
+    if len(user_profiles) < 2:
+        return {}
+
+    # Convert profile.languages and topics to dict if not already (for consistency and speed)
+    for profile in user_profiles:
+        if not isinstance(profile.languages, dict):
+            profile.languages = dict(profile.languages)
+        if not isinstance(profile.topics, dict):
+            profile.topics = dict(profile.topics)
+
+    user_metrics = {}
+
+    for profile in user_profiles:
+        username = profile.username
+        recent_activity = profile.recent_activity or []
+        repos = profile.repositories or []
+        languages = profile.languages
+        topics = profile.topics
+
+        # Activity metrics (optimized with single pass)
+        activity_counts = {
+            'pushes': 0, 
+            'pull_requests': 0, 
+            'issues': 0, 
+            'stars': 0,
+            'commits': 0,
+            'releases': 0,
+            'forks': 0
+        }
+        for activity in recent_activity:
+            activity_type = activity.get('type', '')
+            if activity_type == 'PushEvent':
+                activity_counts['pushes'] += 1
+                payload = activity.get('payload', {})
+                commits = payload.get('commits', [])
+                activity_counts['commits'] += len(commits)
+            elif activity_type == 'PullRequestEvent':
+                activity_counts['pull_requests'] += 1
+            elif activity_type == 'IssuesEvent':
+                activity_counts['issues'] += 1
+            elif activity_type == 'WatchEvent':
+                activity_counts['stars'] += 1
+            elif activity_type == 'ReleaseEvent':
+                activity_counts['releases'] += 1
+            elif activity_type == 'ForkEvent':
+                activity_counts['forks'] += 1
+
+        # Repository metrics (optimized)
+        total_repos = len(repos)
+        original_repos = sum(1 for r in repos if not r.get('fork', False))
+        forked_repos = total_repos - original_repos
+        total_stars = sum(r.get('stargazers_count', 0) for r in repos)
+        total_forks = sum(r.get('forks_count', 0) for r in repos)
+        
+        # Calculate additional repository metrics
+        total_watchers = sum(r.get('watchers_count', 0) for r in repos)
+        total_size = sum(r.get('size', 0) for r in repos)  # Size in KB
+        public_repos = sum(1 for r in repos if not r.get('private', False))
+        private_repos = total_repos - public_repos
+
+        # Language metrics (optimized)
+        total_languages = len(languages)
+        primary_language = max(languages.items(), key=lambda x: x[1])[0] if languages else "None"
+        total_bytes = sum(languages.values())
+        language_diversity = len(languages) / max(1, total_bytes / 1000)
+        
+        # Calculate language distribution percentages
+        language_percentages = {}
+        if total_bytes > 0:
+            for lang, bytes_count in languages.items():
+                language_percentages[lang] = round((bytes_count / total_bytes) * 100, 1)
+
+        # Topic metrics (optimized)
+        total_topics = len(topics)
+        top_topics = sorted(topics.items(), key=lambda x: x[1], reverse=True)[:3]
+        top_topic_names = [topic for topic, _ in top_topics]
+
+        user_metrics[username] = {
+            'activity': activity_counts,
+            'repositories': {
+                'total_repos': total_repos,
+                'original_repos': original_repos,
+                'forked_repos': forked_repos,
+                'public_repos': public_repos,
+                'private_repos': private_repos,
+                'total_stars': total_stars,
+                'total_forks': total_forks,
+                'total_watchers': total_watchers,
+                'total_size_kb': total_size,
+                'avg_repo_size': round(total_size / max(1, total_repos), 1)
+            },
+            'languages': {
+                'total_languages': total_languages,
+                'primary_language': primary_language,
+                'primary_language_percentage': language_percentages.get(primary_language, 0),
+                'language_diversity': round(language_diversity, 2),
+                'total_code_bytes': total_bytes,
+                'language_breakdown': language_percentages
+            },
+            'topics': {
+                'total_topics': total_topics,
+                'top_topics': top_topic_names,
+                'topic_diversity': total_topics
+            }
+        }
+
+
+    # Build response data structure
+    activity_metrics = [{
+        "label": "Activity Metrics",
+        **{username: metrics['activity'] for username, metrics in user_metrics.items()}
+    }]
+
+    repo_metrics = [{
+        "label": "Repository Stats",
+        **{username: metrics['repositories'] for username, metrics in user_metrics.items()}
+    }]
+
+    language_metrics = [{
+        "label": "Language Diversity",
+        **{username: metrics['languages'] for username, metrics in user_metrics.items()}
+    }]
+
+    topic_metrics = [{
+        "label": "Topic Interests",
+        **{username: metrics['topics'] for username, metrics in user_metrics.items()}
+    }]
+
+    return {
+        "activity_comparison": activity_metrics,
+        "repository_comparison": repo_metrics,
+        "language_comparison": language_metrics,
+        "topic_comparison": topic_metrics
+    }
         
 def analyze_compatibility_metrics(user_profiles: List[UserProfile]) -> Dict[str, Any]:
     """Generate numerical metrics for Chart.js visualization"""

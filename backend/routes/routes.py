@@ -1,6 +1,6 @@
 from fastapi import FastAPI, APIRouter, HTTPException
 from models import UserCompatibilityRequest 
-from services.analytics_service import analyze_compatibility_metrics, get_complete_user_info, create_radar_chart_data
+from services.analytics_service import analyze_compatibility_metrics, create_comparison_metrics_data, get_complete_user_info, create_radar_chart_data
 from services.llm_service import call_llm_api, create_llm_prompt, create_quick_compatibility_prompt, call_llm_raw, parse_compatibility_response    
 from services.github_service import get_user_by_id, get_user_recent_activity, get_user_repos as fetch_github_repos, get_user_starred_repos, get_user_topics, get_user_total_language_info
 import asyncio      
@@ -185,13 +185,17 @@ async def quick_compatibility(request: UserCompatibilityRequest):
         compatibility_score, compatibility_reasoning = parse_compatibility_response(raw_llm_response)
         
         radar_chart_data = await create_radar_chart_data(user_profiles)
-        
+
+        # Create comparison metrics data for line charts
+        comparison_data = create_comparison_metrics_data(user_profiles)
+
         return {
             "success": True,
             "users": [{"username": profile.username, "avatar_url": profile.avatar_url, "recent_activity": profile.recent_activity} for profile in user_profiles],
             "compatibility_score": compatibility_score,
             "compatibility_reasoning": compatibility_reasoning,
             "radar_chart_data": radar_chart_data,
+            "comparison_data": comparison_data,
             "timestamp": datetime.datetime.now().isoformat()
         }
         

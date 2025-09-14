@@ -21,7 +21,7 @@ class UserProfile(BaseModel):
     languages: List[tuple]
     topics: List[tuple]
     starred_repos: Optional[List[Dict[str, Union[str, None]]]]
-    recent_activity: Optional[List[Dict[str, str]]]
+    recent_activity: Optional[List[Dict[str, Any]]]
     repositories: List[Dict[str, Any]]
     # profile_picture: str
 
