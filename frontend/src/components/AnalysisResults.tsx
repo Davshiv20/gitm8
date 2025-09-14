@@ -7,7 +7,7 @@ interface AnalysisResultsProps {
 }
 
 const AnalysisResults: React.FC<AnalysisResultsProps> = ({ data, onReset }) => {
-  const { llm_analysis, compatibility_metrics, visualization_data } = data
+  const { llm_analysis, compatibility_metrics } = data
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">

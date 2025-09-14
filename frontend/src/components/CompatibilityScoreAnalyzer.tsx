@@ -1,5 +1,5 @@
 import CompatibilityScore from "./CompatibilityScore";
-import Typewriter from 'typewriter-effect';
+// import Typewriter from 'typewriter-effect';
 import LineChart from "./LineChart";
 
 interface RadarChartData {

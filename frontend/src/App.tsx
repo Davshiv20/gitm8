@@ -2,7 +2,7 @@ import './App.css'
 import gitm8 from './assets/gitm8.png'
 import { useRef, useEffect, useReducer } from 'react'
 import GitForm from './components/GitForm'
-import { UI_TEXT, STYLING, CONFIG, API, COMPONENTS} from './components/constants'
+import { UI_TEXT, STYLING, CONFIG, COMPONENTS} from './components/constants'
 import { CompatibilityScoreAnalyzer } from './components/CompatibilityScoreAnalyzer'
 import { LandingCardWrapper } from './components/LandingCardWrapper'
 
@@ -90,46 +90,46 @@ function App() {
   const radialRef = useRef<HTMLDivElement>(null)
   const [state, dispatch] = useReducer(appReducer, initialState)
 
-  const handleSubmit = async (data: { users: string[] }) => {
-    dispatch({ type: 'SET_LOADING', payload: true })
-    
-    try {
-      const quickRes = await fetch(`${API.BASE_URL}/api/quick-compatibility`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ usernames: data.users }),
-      })
-      
-      if (!quickRes.ok) {
-        throw new Error(UI_TEXT.ERROR_MESSAGES.USER_NOT_FOUND)
-      }
-      
-      type QuickResult = {
-        compatibility_score: number
-        compatibility_reasoning: string
-        users: User[]
-        radar_chart_data: RadarChartData
-      }
-      const quickResult: QuickResult = await quickRes.json()
-      console.log('Quick result:', quickResult)
-      
-      const payload: SetCompatibilityDataPayload = {
-        score: quickResult.compatibility_score,
-        reasoning: quickResult.compatibility_reasoning,
-        users: quickResult.users,
-        radarData: quickResult.radar_chart_data
-      }
-      dispatch({
-        type: 'SET_COMPATIBILITY_DATA',
-        payload
-      })
-    } catch (err: any) {
-      dispatch({ 
-        type: 'SET_ERROR', 
-        payload: err.message || UI_TEXT.ERROR_MESSAGES.GENERAL_ERROR 
-      })
-    }
-  }
+  // const handleSubmit = async (data: { users: string[] }) => {
+  //   dispatch({ type: 'SET_LOADING', payload: true })
+  //   
+  //   try {
+  //     const quickRes = await fetch(`${API.BASE_URL}/api/quick-compatibility`, {
+  //       method: 'POST',
+  //       headers: { 'Content-Type': 'application/json' },
+  //       body: JSON.stringify({ usernames: data.users }),
+  //     })
+  //     
+  //     if (!quickRes.ok) {
+  //       throw new Error(UI_TEXT.ERROR_MESSAGES.USER_NOT_FOUND)
+  //     }
+  //     
+  //     type QuickResult = {
+  //       compatibility_score: number
+  //       compatibility_reasoning: string
+  //       users: User[]
+  //       radar_chart_data: RadarChartData
+  //     }
+  //     const quickResult: QuickResult = await quickRes.json()
+  //     console.log('Quick result:', quickResult)
+  //     
+  //     const payload: SetCompatibilityDataPayload = {
+  //       score: quickResult.compatibility_score,
+  //       reasoning: quickResult.compatibility_reasoning,
+  //       users: quickResult.users,
+  //       radarData: quickResult.radar_chart_data
+  //     }
+  //     dispatch({
+  //       type: 'SET_COMPATIBILITY_DATA',
+  //       payload
+  //     })
+  //   } catch (err: any) {
+  //     dispatch({ 
+  //       type: 'SET_ERROR', 
+  //       payload: err.message || UI_TEXT.ERROR_MESSAGES.GENERAL_ERROR 
+  //     })
+  //   }
+  // }
 
   // Radial gradient animation
   useEffect(() => {
