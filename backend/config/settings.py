@@ -23,11 +23,11 @@ class Settings(BaseSettings):
     """Centralized application settings with environment-specific loading."""
 
     # Environment Configuration
-    env: str = Field(default="development", description="Environment (development, stag, production)")
+    env: str = Field(default="development", alias="ENV", description="Environment (development, stag, production)")
 
     # CORS Configuration
     allowed_origins_str: str = Field(
-        default="http://localhost:5173,http://localhost:8000",
+        default="http://localhost:5173,http://localhost:8000,https://gitm8-fe.vercel.app",
         alias="ALLOWED_ORIGINS",
         description="Allowed CORS origins as comma-separated string"
     )
