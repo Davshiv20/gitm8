@@ -246,7 +246,7 @@ export const CONFIG = {
 
 // API Constants
 export const API = {
-  BASE_URL: 'http://localhost:8000',
+  BASE_URL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
   ENDPOINTS: {
     ANALYZE_COMPATIBILITY: '/api/analyze-compatibility'
   }

@@ -1,4 +1,5 @@
 {
+  "version": 2,
   "builds": [
     {
       "src": "frontend/package.json",
@@ -6,9 +7,17 @@
       "config": {
         "distDir": "dist"
       }
+    },
+    {
+      "src": "backend/gitm8/main.py",
+      "use": "@vercel/python"
     }
   ],
   "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/backend/gitm8/main.py"
+    },
     {
       "src": "/(.*)",
       "dest": "/frontend/$1"
