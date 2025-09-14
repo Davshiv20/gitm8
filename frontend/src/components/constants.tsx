@@ -245,8 +245,23 @@ export const CONFIG = {
 } as const;
 
 // API Constants
+const getBaseURL = () => {
+  // If VITE_API_URL is explicitly set, use it
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL
+  }
+  
+  // In production (Vercel), use relative URLs to call the same domain
+  if (import.meta.env.PROD) {
+    return ''
+  }
+  
+  // In development, use localhost
+  return 'http://localhost:8000'
+}
+
 export const API = {
-  BASE_URL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
+  BASE_URL: getBaseURL(),
   ENDPOINTS: {
     ANALYZE_COMPATIBILITY: '/api/analyze-compatibility'
   }
