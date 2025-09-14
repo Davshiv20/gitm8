@@ -151,10 +151,12 @@ async def analyze_compatibility(request: UserCompatibilityRequest):
                 },
                 "activity_comparison": {
                     profile.username: {
-                        "pushes": len([a for a in profile.recent_activity if a['type'] == 'PushEvent']),
-                        "prs": len([a for a in profile.recent_activity if a['type'] == 'PullRequestEvent']),
+                        "pushes": sum(a.get('count', 1) for a in profile.recent_activity if a['type'] == 'PushEvent'),
+                        "prs": sum(a.get('count', 1) for a in profile.recent_activity if a['type'] == 'PullRequestEvent'),
+                        "issues": sum(a.get('count', 1) for a in profile.recent_activity if a['type'] == 'IssuesEvent'),
                         "repos": len(profile.repositories),
-                        "original_repos": len([r for r in profile.repositories if not r['fork']])
+                        "original_repos": len([r for r in profile.repositories if not r['fork']]),
+                        "total_commits": sum(a.get('count', 1) for a in profile.recent_activity if a['type'] == 'PushEvent')
                     } for profile in user_profiles
                 },
                 "project_ideas": llm_analysis.analysis.collaboration_opportunities if hasattr(llm_analysis.analysis, 'collaboration_opportunities') else []

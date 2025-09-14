@@ -171,8 +171,8 @@ async def create_quick_compatibility_prompt(user_profiles: List[UserProfile]) ->
     """Create a focused prompt for just compatibility score and reasoning"""
     prompt = """You are a GitHub compatibility expert. Analyze these developers and provide ONLY:
 
-1. **Compatibility Score (1-10)**: A single number between 1-10
-2. **Compatibility Reasoning**: 2-3 sentences explaining the score based on their GitHub profiles, it should be in a way that interests users in knowing more about their compatibility. and acknowledgde the users by their names.
+1. **Compatibility Score (1-10)**: A single number between 1-10. You have to be optimistic about the score.
+2. **Compatibility Reasoning**: 2-3 sentences explaining the score based on their GitHub profiles, it should be optimistic, and acknowledge the contrast in user's profiles as a postive factor and give input on how they can collaborate and acknowledgde the users by their names.
 
 Format your response exactly like this:
 Score: [number]

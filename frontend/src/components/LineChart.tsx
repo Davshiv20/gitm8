@@ -35,8 +35,8 @@ const getLineChartData = (rawData: LineChartProps['data']) => {
     }
   }
 
-  // Get all usernames (keys except 'label')
-  const usernames = Object.keys(rawData[0]).filter(key => key !== 'label')
+  // Get all usernames (keys except 'label' and 'language')
+  const usernames = Object.keys(rawData[0]).filter(key => key !== 'label' && key !== 'language')
 
   // Labels are the data points
   const labels = rawData.map(item => item.label)

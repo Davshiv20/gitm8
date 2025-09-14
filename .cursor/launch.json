@@ -8,10 +8,19 @@
       "module": "uvicorn",
       "args": [
         "backend.gitm8.main:app",
-        "--reload",
         "--host", "127.0.0.1",
         "--port", "8000"
       ],
+      "env": {
+        "ENV": "development",
+        "GITHUB_TOKEN": "your_github_token_here",
+        "ALLOWED_ORIGINS": "http://localhost:5173,http://localhost:8000",
+        "HOST": "0.0.0.0",
+        "PORT": "8180",
+        "DEBUG": "true",
+        "RELOAD": "true",
+        "RATE_LIMIT_ENABLED": "true"
+      },
       "jinja": true,
       "console": "integratedTerminal",
       "justMyCode": true

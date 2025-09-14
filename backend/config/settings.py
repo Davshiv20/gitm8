@@ -15,7 +15,8 @@ import os
 import logging
 from typing import List, Optional
 from functools import lru_cache
-from pydantic import BaseSettings, Field, field_validator, ValidationInfo, SettingsConfigDict
+from pydantic import Field, field_validator, ValidationInfo
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -55,15 +56,36 @@ class Settings(BaseSettings):
     def __init__(self, **data):
         # Determine which env file to load based on ENV variable at runtime
         env = os.getenv('ENV', 'development')
-        env_file = f".env.{env}"
-
-        # Update model config with the correct env file
-        self.__class__.model_config = SettingsConfigDict(
-            env_file=env_file,
-            env_file_encoding="utf-8",
-            case_sensitive=False,
-            extra="ignore",
-        )
+        
+        # Try to find the env file in multiple locations
+        possible_locations = [
+            f".env.{env}",  # Current directory
+            f"backend/.env.{env}",  # Backend subdirectory
+            f"../backend/.env.{env}",  # Parent directory + backend
+        ]
+        
+        env_file = None
+        for location in possible_locations:
+            if os.path.exists(location):
+                env_file = location
+                break
+        
+        # If no env file found, don't specify one (use environment variables only)
+        if env_file:
+            # Update model config with the correct env file
+            self.__class__.model_config = SettingsConfigDict(
+                env_file=env_file,
+                env_file_encoding="utf-8",
+                case_sensitive=False,
+                extra="ignore",
+            )
+        else:
+            # No env file found, use environment variables only
+            self.__class__.model_config = SettingsConfigDict(
+                env_file_encoding="utf-8",
+                case_sensitive=False,
+                extra="ignore",
+            )
 
         super().__init__(**data)
 
@@ -163,7 +185,18 @@ class Settings(BaseSettings):
             logger.error("❌ Missing required environment variables:")
             for var in missing_vars:
                 logger.error(f"   - {var}")
-            logger.error("Please set these environment variables before starting the server.")
+            logger.error("")
+            logger.error("💡 Solutions:")
+            logger.error("   1. Set environment variables directly:")
+            logger.error(f"      export {var}=your_value_here")
+            logger.error("")
+            logger.error("   2. Create a .env.development file in the backend directory:")
+            logger.error("      backend/.env.development")
+            logger.error("")
+            logger.error("   3. Or create .env.development in the project root:")
+            logger.error("      .env.development")
+            logger.error("")
+            logger.error("   See ENVIRONMENT_SETUP.md for detailed instructions.")
             raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
         
         # Log successful validation

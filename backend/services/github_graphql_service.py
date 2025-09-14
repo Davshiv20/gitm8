@@ -28,7 +28,7 @@ class GitHubGraphQLService:
             use_dns_cache=True
         )
         
-        timeout = aiohttp.ClientTimeout(total=30, connect=10)
+        timeout = aiohttp.ClientTimeout(total=600, connect=10)
         
         async with aiohttp.ClientSession(
             headers=self.headers, 
@@ -155,6 +155,7 @@ class GitHubGraphQLService:
                     totalPullRequestContributions
                     totalPullRequestReviewContributions
                     totalRepositoryContributions
+                    restrictedContributionsCount
                     commitContributionsByRepository(maxRepositories: 100) {
                         repository {
                             name
@@ -290,22 +291,58 @@ class GitHubGraphQLService:
             }
             starred_repos.append(starred_repo)
         
-        # Recent activity (simulated from contributions)
+        # Recent activity (derived from contributions with actual counts)
         recent_activity = []
         contributions = user_data.get("contributionsCollection", {})
         
-        if contributions.get("totalCommitContributions", 0) > 0:
+        # Add commit contributions with actual count
+        commit_count = contributions.get("totalCommitContributions", 0)
+        if commit_count > 0:
             recent_activity.append({
                 "type": "PushEvent",
                 "created_at": user_data.get("updatedAt"),
-                "repo": "Recent commits"
+                "repo": f"{commit_count} commits",
+                "count": commit_count
             })
         
-        if contributions.get("totalPullRequestContributions", 0) > 0:
+        # Add pull request contributions with actual count
+        pr_count = contributions.get("totalPullRequestContributions", 0)
+        if pr_count > 0:
             recent_activity.append({
                 "type": "PullRequestEvent",
                 "created_at": user_data.get("updatedAt"),
-                "repo": "Recent PRs"
+                "repo": f"{pr_count} pull requests",
+                "count": pr_count
+            })
+        
+        # Add issue contributions with actual count
+        issue_count = contributions.get("totalIssueContributions", 0)
+        if issue_count > 0:
+            recent_activity.append({
+                "type": "IssuesEvent",
+                "created_at": user_data.get("updatedAt"),
+                "repo": f"{issue_count} issues",
+                "count": issue_count
+            })
+        
+        # Add repository contributions with actual count
+        repo_contrib_count = contributions.get("totalRepositoryContributions", 0)
+        if repo_contrib_count > 0:
+            recent_activity.append({
+                "type": "CreateEvent",
+                "created_at": user_data.get("updatedAt"),
+                "repo": f"{repo_contrib_count} repositories",
+                "count": repo_contrib_count
+            })
+        
+        # Add pull request review contributions with actual count
+        pr_review_count = contributions.get("totalPullRequestReviewContributions", 0)
+        if pr_review_count > 0:
+            recent_activity.append({
+                "type": "PullRequestReviewEvent",
+                "created_at": user_data.get("updatedAt"),
+                "repo": f"{pr_review_count} PR reviews",
+                "count": pr_review_count
             })
         
         # Expertise analysis (calculated from the data)

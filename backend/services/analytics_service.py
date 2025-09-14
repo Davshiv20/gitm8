@@ -105,21 +105,27 @@ def create_comparison_metrics_data(user_profiles: List[UserProfile]) -> Dict[str
         }
         for activity in recent_activity:
             activity_type = activity.get('type', '')
+            count = activity.get('count', 1)  # Use actual count, default to 1 for backward compatibility
+            
             if activity_type == 'PushEvent':
-                activity_counts['pushes'] += 1
-                payload = activity.get('payload', {})
-                commits = payload.get('commits', [])
-                activity_counts['commits'] += len(commits)
+                activity_counts['pushes'] += count
+                activity_counts['commits'] += count  # For our new format, commits = pushes
             elif activity_type == 'PullRequestEvent':
-                activity_counts['pull_requests'] += 1
+                activity_counts['pull_requests'] += count
             elif activity_type == 'IssuesEvent':
-                activity_counts['issues'] += 1
+                activity_counts['issues'] += count
             elif activity_type == 'WatchEvent':
-                activity_counts['stars'] += 1
+                activity_counts['stars'] += count
             elif activity_type == 'ReleaseEvent':
-                activity_counts['releases'] += 1
+                activity_counts['releases'] += count
             elif activity_type == 'ForkEvent':
-                activity_counts['forks'] += 1
+                activity_counts['forks'] += count
+            elif activity_type == 'CreateEvent':
+                # Repository contributions
+                activity_counts['repositories'] = activity_counts.get('repositories', 0) + count
+            elif activity_type == 'PullRequestReviewEvent':
+                # PR reviews
+                activity_counts['pr_reviews'] = activity_counts.get('pr_reviews', 0) + count
 
         # Repository metrics (optimized)
         total_repos = len(repos)
