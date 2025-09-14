@@ -5,6 +5,7 @@ from typing import List, Protocol, Any
 from fastapi import HTTPException
 from models import UserProfile, CollaborationInsight
 from google import genai
+from config.settings import get_settings
 
 class LLMClient(Protocol):
     async def generate(self, prompt: str, output_schema: Any) -> Any:
@@ -45,7 +46,8 @@ class LLMClientFactory:
     @staticmethod
     def get_client(provider: str = "google_gemini") -> LLMClient:
         if provider == "google_gemini":
-            api_key = os.getenv("GOOGLE_API_KEY")
+            settings = get_settings()
+            api_key = settings.google_api_key
             if not api_key:
                 raise HTTPException(status_code=500, detail="Google API key not set")
             return GoogleGeminiClient(api_key)

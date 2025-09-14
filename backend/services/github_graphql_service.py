@@ -4,13 +4,13 @@ import asyncio
 from typing import Dict, Any, List, Optional
 from fastapi import HTTPException
 import logging
+from config.settings import get_settings
 
 class GitHubGraphQLService:
     def __init__(self):
         self.api_url = "https://api.github.com/graphql"
-        self.token = os.getenv("GITHUB_TOKEN")
-        if not self.token:
-            raise HTTPException(status_code=500, detail="GitHub token not set")
+        settings = get_settings()
+        self.token = settings.github_token
         
         self.headers = {
             "Authorization": f"Bearer {self.token}",

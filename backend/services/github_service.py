@@ -3,12 +3,11 @@ from fastapi import FastAPI
 import aiohttp
 import asyncio
 import os
-from dotenv import load_dotenv
 from datetime import datetime
+from config.settings import get_settings
 
-load_dotenv()
-
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+settings = get_settings()
+GITHUB_TOKEN = settings.github_token
 
 HEADERS = {
     "Authorization": f"token {GITHUB_TOKEN}",
