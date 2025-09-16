@@ -5,6 +5,7 @@ import GitForm from './components/GitForm'
 import { UI_TEXT, STYLING, CONFIG, COMPONENTS} from './components/constants'
 import { CompatibilityScoreAnalyzer } from './components/CompatibilityScoreAnalyzer'
 import { LandingCardWrapper } from './components/LandingCardWrapper'
+import { Analytics } from '@vercel/analytics/react'
 
 type RadarChartData = {
   languages: Array<{ language: string; [username: string]: number | string }>
@@ -234,6 +235,7 @@ function App() {
           />
         )}
       </div>
+      <Analytics />
     </div>
   )
 }

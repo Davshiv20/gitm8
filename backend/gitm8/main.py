@@ -52,8 +52,14 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
 app.include_router(routes.router)
+
+@app.get("/")
+async def root():
+    return {
+       "I AM THE BACKEND"
+    }
