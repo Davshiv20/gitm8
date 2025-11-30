@@ -38,6 +38,20 @@ class Settings(BaseSettings):
     # Google Gemini Configuration (optional, for fallback)
     google_api_key: Optional[str] = Field(default=None, description="Google API key for Gemini")
 
+    # Database Configuration
+    database_url: Optional[str] = Field(
+        default="postgresql://postgres:postgres@localhost:5432/gitm8_portfolio",
+        alias="DATABASE_URL",
+        description="PostgreSQL connection string (defaults to local PostgreSQL)"
+    )
+    
+    # Redis Configuration (Upstash) - Optional for local development
+    upstash_redis_rest_url: Optional[str] = Field(default=None, alias="UPSTASH_REDIS_REST_URL", description="Upstash Redis REST API URL")
+    upstash_redis_rest_token: Optional[str] = Field(default=None, alias="UPSTASH_REDIS_REST_TOKEN", description="Upstash Redis REST API token")
+    
+    # GCP Configuration (optional)
+    gcp_project_id: Optional[str] = Field(default=None, alias="GCP_PROJECT_ID", description="GCP Project ID (optional, for Cloud SQL Proxy)")
+
     # Server Configuration
     host: str = Field(default="0.0.0.0", description="Server host")
     port: int = Field(default=8180, description="Server port")
@@ -186,7 +200,7 @@ class Settings(BaseSettings):
             for var in missing_vars:
                 logger.error(f"   - {var}")
             logger.error("")
-            logger.error("💡 Solutions:")
+            logger.error(" Solutions:")
             logger.error("   1. Set environment variables directly:")
             logger.error(f"      export {var}=your_value_here")
             logger.error("")
@@ -205,6 +219,11 @@ class Settings(BaseSettings):
         logger.info(f"   - Server: {self.host}:{self.port}")
         logger.info(f"   - Debug mode: {self.debug}")
         logger.info(f"   - CORS origins: {', '.join(self.allowed_origins)}")
+
+        if self.database_url:
+            logger.info("   - Database URL: ✅ Set")
+        else:
+            logger.warning("   - Database URL: ⚠️  Not set (using default local PostgreSQL)")
         
         if self.google_api_key:
             logger.info("   - Google API key: ✅ Set")
@@ -238,3 +257,7 @@ ENV = settings.env
 DEBUG = settings.debug
 GITHUB_TOKEN = settings.github_token
 GOOGLE_API_KEY = settings.google_api_key
+DATABASE_URL = settings.database_url
+# UPSTASH_REDIS_REST_URL = settings.upstash_redis_rest_url
+# UPSTASH_REDIS_REST_TOKEN = settings.upstash_redis_rest_token
+# GCP_PROJECT_ID = settings.gcp_project_id
