@@ -3,7 +3,6 @@ import gitm8 from './assets/gitm8.png'
 import { useRef, useEffect, useReducer } from 'react'
 import GitForm from './components/GitForm'
 import { UI_TEXT, STYLING, CONFIG, COMPONENTS} from './components/constants'
-import { CompatibilityScoreAnalyzer } from './components/CompatibilityScoreAnalyzer'
 import { LandingCardWrapper } from './components/LandingCardWrapper'
 import { Analytics } from '@vercel/analytics/react'
 
@@ -240,14 +239,7 @@ function App() {
         
         <div className="flex justify-between w-full max-w-4xl mt-12" />
         
-        {state.compatibilityScore && (
-          <CompatibilityScoreAnalyzer 
-            compatibilityScore={state.compatibilityScore} 
-            compatibilityReasoning={state.compatibilityReasoning} 
-            users={state.users}   
-            radarChartData={state.radarChartData}
-          />
-        )}
+        
       </div>
       <Analytics />
     </div>
