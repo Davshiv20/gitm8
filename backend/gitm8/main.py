@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.routing import APIRouter
 from routes import routes
-from routes.portfolio_routes import router as portfolio_router
+# from routes.portfolio_routes import router as portfolio_router
 from fastapi.middleware.cors import CORSMiddleware
 from config.settings import validate_settings, get_settings
 from database.db import init_db, get_engine
