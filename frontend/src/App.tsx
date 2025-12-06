@@ -196,6 +196,14 @@ function App() {
             transition: 'background 2s',
           }}
         />
+        {/* Second radial gradient - positioned bottom-left for visual balance */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background: 'radial-gradient(circle 600px at 0% 85%, rgba(255, 107, 107, 0.4), transparent)',
+            filter: 'blur(40px)',
+          }}
+        />
       </div>
       
       <div className="pointer-events-none hidden md:block" aria-hidden>
@@ -220,8 +228,14 @@ function App() {
           </p>
         </div>
         
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center gap-4">
           <GitForm isLoading={state.isLoading} />
+          {/* <a
+            href="/create-portfolio"
+            className="text-lg text-gray-700 hover:text-black underline transition-colors"
+          >
+            Or create your own portfolio →
+          </a> */}
         </div>
         
         <div className="flex justify-between w-full max-w-4xl mt-12" />

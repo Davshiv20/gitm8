@@ -1,243 +1,346 @@
-import os
-import asyncio
+"""
+LLM Service - Async Gemini API integration with Jinja2 templated prompts.
+"""
 import logging
-from typing import List, Protocol, Any
+import aiohttp
+import re
+from functools import lru_cache
+from typing import List
 from fastapi import HTTPException
-from models import UserProfile, CollaborationInsight
-from google import genai
+from jinja2 import Template
+from pydantic import BaseModel, Field, field_validator
+from models import UserProfile, CompatibilityFactor
 from config.settings import get_settings
 
-class LLMClient(Protocol):
-    async def generate(self, prompt: str, output_schema: Any) -> Any:
-        ...
 
-class GoogleGeminiClient:
-    def __init__(self, api_key: str):
-        self.genai = genai
-        self.api_key = api_key
-        self.client = self.genai.Client(api_key=api_key)
+class CompatibilityResponse(BaseModel):
+    """Structured response from LLM compatibility analysis (internal parsing)."""
+    score: int = Field(default=5, ge=1, le=10, description="Compatibility score 1-10")
+    reasoning: str = Field(default="Analysis based on profile data", description="2-3 sentence reasoning")
+    compatibility_factors: List[CompatibilityFactor] = Field(
+        default_factory=list,
+        description="List of 4 compatibility factors"
+    )
+    
+    @field_validator('score', mode='before')
+    @classmethod
+    def clamp_score(cls, v):
+        """Ensure score is within valid range."""
+        if isinstance(v, str):
+            try:
+                v = int(v)
+            except ValueError:
+                return 5
+        return max(1, min(10, v))
 
-    async def generate(self, prompt: str, output_schema: Any) -> Any:
-        loop = asyncio.get_event_loop()
-        try:
-            response = await loop.run_in_executor(
-                None,
-                lambda: self.client.models.generate_content(
-                    model="gemini-2.0-flash-lite",
-                    contents=prompt,
-                    config={
-                        "response_mime_type": "application/json",
-                        "response_schema": output_schema,
-                        "temperature": 0.3,
-                        "max_output_tokens": 1500
-                    }
-                )
-            )
-            
-            # Check if response and parsed content exist
-            if not response or not hasattr(response, 'parsed') or response.parsed is None:
-                raise Exception("Invalid response from Gemini API")
-                
-            return response.parsed
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"LLM API call failed: {str(e)}")
+logger = logging.getLogger(__name__)
 
-class LLMClientFactory:
-    @staticmethod
-    def get_client(provider: str = "google_gemini") -> LLMClient:
-        if provider == "google_gemini":
-            settings = get_settings()
-            api_key = settings.google_api_key
-            if not api_key:
-                raise HTTPException(status_code=500, detail="Google API key not set")
-            return GoogleGeminiClient(api_key)
-        raise HTTPException(status_code=500, detail=f"Unknown LLM provider: {provider}")
-
-class PromptBuilder(Protocol):
-    def build(self, user_profiles: List[UserProfile]) -> str:
-        ...
+# Gemini API endpoint
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent"
 
 
-class CollaborationPromptBuilder:
-    def build(self, user_profiles: List[UserProfile]) -> str:
-        prompt = """You are an expert GitHub collaboration analyst. Your goal is to provide SPECIFIC, ACTIONABLE insights that developers can immediately act upon.
+# =============================================================================
+# JINJA2 TEMPLATES (LRU cached)
+# =============================================================================
+
+@lru_cache(maxsize=4)
+def _get_template(template_name: str) -> Template:
+    """Get compiled Jinja2 template (cached)."""
+    templates = {
+        "collaboration": Template("""
+        You are an expert GitHub collaboration analyst. Provide SPECIFIC, ACTIONABLE insights.
 
 Analyze these developers and provide:
-
-1. **Compatibility Score** (1-10): With 3 lines of critical reasoning based on their actual GitHub data and in a way that interests users in knowing more about their compatibility.
-3. **Complementary Skills**: How their different expertise creates unique value propositions
-4. **Collaboration Opportunities**: 3-5 SPECIFIC project ideas with:
+1. **Compatibility Score** (1-10): With 3 lines of critical reasoning
+2. **Complementary Skills**: How their different expertise creates value
+3. **Collaboration Opportunities**: 3-5 SPECIFIC project ideas with:
    - Project name and description
    - Required skills (matching their profiles)
-   - Estimated timeline (2-4 weeks, 1-3 months, 3-6 months)
+   - Estimated timeline
    - Market potential or learning value
-5. **Potential Challenges**: Specific obstacles with concrete solutions
-6. **Recommendations**: Step-by-step action plan with immediate next steps
+4. **Potential Challenges**: Specific obstacles with solutions
+5. **Recommendations**: Step-by-step action plan
 
-IMPORTANT: Be specific about technologies, frameworks, and project details. Don't give generic advice.
+IMPORTANT: Be specific about technologies, frameworks, and project details.
 
-Here are the user profiles:
+User Profiles:
+{% for user in users %}
+## User {{ loop.index }}: {{ user.username }}
+- Repos: {{ user.public_repos }} (Original: {{ user.original_repos }}, Forked: {{ user.forked_repos }})
+- Followers: {{ user.followers }}
+- Bio: {{ user.bio or 'N/A' }}
+- Company: {{ user.company or 'N/A' }}
+- Languages: {{ user.top_langs }}
+- Topics: {{ user.top_topics }}
+- Activity: {{ user.push_events }} pushes, {{ user.pr_events }} PRs
+{% if user.expertise %}- Type: {{ user.expertise.collaboration_type }}
+{% for exp in user.expertise.primary_expertise[:3] %}  • {{ exp.language }} ({{ exp.level }}) - {{ exp.repos_count }} repos
+{% endfor %}{% endif %}
+{% endfor %}"""),
 
-"""
-        for i, profile in enumerate(user_profiles, 1):
-            original_repos = len([repo for repo in profile.repositories if not repo['fork']])
-            forked_repos = len([repo for repo in profile.repositories if repo['fork']])
-            push_events = len([activity for activity in profile.recent_activity if activity['type'] == 'PushEvent'])
-            pr_events = len([activity for activity in profile.recent_activity if activity['type'] == 'PullRequestEvent'])
-            top_languages = [f"{lang} ({bytes:,} bytes)" for lang, bytes in profile.languages[:3]]
-            top_topics = [f"{topic} ({count} repos)" for topic, count in profile.topics[:5]]
+        "quick_compatibility": Template("""
+You are a GitHub compatibility analyst. Analyze the developers and output ONLY:
 
-            prompt += f"""
-## User {i}: {profile.username}
+1. **Compatibility Score (1–10)** — lean slightly optimistic.
+2. **Compatibility Reasoning** — 2–3 sentences referencing the users by name and explaining why their skills complement each other. Treat contrasts as positive.
+3. **Key Compatibility Factors** — return exactly 4 bullet points with SHORT explanations:
+   - **Shared Languages:** one-line explanation
+   - **Project Sizes:** one-line explanation
+   - **Contribution Activity:** one-line explanation
+   - **Activity Heat:** one-line explanation
 
-**Profile:**
-- Public Repos: {profile.basic_info.get('public_repos', 'N/A')} (Original: {original_repos}, Forked: {forked_repos})
-- Followers: {profile.basic_info.get('followers', 'N/A')}
-- Bio: {profile.basic_info.get('bio', 'No bio available')}
-- Company: {profile.basic_info.get('company', 'N/A')}
+STRICT OUTPUT FORMAT (NO deviation):
+Score: [number]
+Reasoning: [2–3 sentences]
+Key Compatibility Factors:
+- Shared Languages: [explanation]
+- Project Sizes: [explanation]
+- Contribution Activity: [explanation]
+- Activity Heat: [explanation]
 
-**Expertise Analysis:**
-"""
-            if 'expertise_analysis' in profile.basic_info:
-                expertise = profile.basic_info['expertise_analysis']
-                prompt += f"""
-- Collaboration Type: {expertise.get('collaboration_type', 'Unknown')}
-- Activity Consistency: {expertise.get('activity_consistency', 0):.2f} events/day
-- Primary Expertise Areas:
-"""
-                for exp in expertise.get('primary_expertise', [])[:3]:
-                    prompt += f"  • {exp['language']} ({exp['level']}) - {exp['repos_count']} repos, complexity: {exp['complexity_score']}\n"
-                engagement = expertise.get('engagement_patterns', {})
-                prompt += f"""
-- Project Initiator Ratio: {engagement.get('project_initiator_ratio', 0):.1%}
-- Active Projects: {engagement.get('active_projects', 0)}
-- Recent Activity Score: {engagement.get('recent_activity_score', 0):.2f}
-"""
-            else:
-                prompt += f"""
-- Top Languages: {', '.join(top_languages)}
-- Top Technologies: {', '.join(top_topics)}
-- Activity: {push_events} pushes, {pr_events} PRs
-- Activity Level: {'High' if push_events > 10 else 'Medium' if push_events > 5 else 'Low'}
-"""
+User Profiles:
+{% for user in users %}
+## User {{ loop.index }}: {{ user.username }}
+- Repos: {{ user.public_repos }} (Original: {{ user.original_repos }}, Forked: {{ user.forked_repos }})
+- Followers: {{ user.followers }}
+- Languages: {{ user.top_langs }}
+- Bio: {{ user.bio or 'No bio available' }}
+- Topics: {{ user.top_topics }}
+- Activity: {{ user.push_events }} pushes, {{ user.pr_events }} PRs
+{% if user.expertise %}- Type: {{ user.expertise.collaboration_type }}
+{% for exp in user.expertise.primary_expertise[:3] %}  • {{ exp.language }} ({{ exp.level }}) - {{ exp.repos_count }} repos
+{% endfor %}{% endif %}
+{% endfor %}
 
-            prompt += f"""
-**Development Style:**
-- {'Project initiator' if original_repos > forked_repos else 'Contributor-focused' if forked_repos > original_repos else 'Balanced'}
-- {'Community-engaged' if pr_events > 5 else 'Code-focused'}
 
-**Notable Starred Projects:**
-{', '.join([f"{repo['name']} ({repo.get('language', 'Unknown')})" for repo in profile.starred_repos[:3] if repo.get('language')])}
+Return ONLY the formatted output above. No extra text.
+""")
 
-"""
-        prompt += """
-CRITICAL REQUIREMENTS:
-1. Give SPECIFIC project names and descriptions
-2. Mention exact technologies they should use based on their profiles
-3. Provide realistic timelines and milestones
-4. Suggest immediate next steps (first week, first month)
-5. Identify potential revenue or learning opportunities
-6. Be specific about who does what in each project
+    }
+    return templates[template_name]
 
-Make your analysis immediately actionable with concrete steps.
-"""
-        return prompt
 
-class PromptBuilderFactory:
-    @staticmethod
-    def get_builder(task_type: str = "collaboration") -> PromptBuilder:
-        if task_type == "collaboration":
-            return CollaborationPromptBuilder()
-        raise HTTPException(status_code=500, detail=f"Unknown prompt builder type: {task_type}")
+def _extract_user_data(profile: UserProfile) -> dict:
+    """Extract user data for template rendering."""
+    repos = profile.repositories or []
+    activities = profile.recent_activity or []
+    
+    original_repos = sum(1 for r in repos if not r.get('fork', False))
+    
+    return {
+        "username": profile.username,
+        "public_repos": profile.basic_info.get('public_repos', 0),
+        "original_repos": original_repos,
+        "forked_repos": len(repos) - original_repos,
+        "followers": profile.basic_info.get('followers', 0),
+        "bio": profile.basic_info.get('bio'),
+        "company": profile.basic_info.get('company'),
+        "top_langs": ', '.join(f"{lang} ({b:,}B)" for lang, b in profile.languages[:3]),
+        "top_topics": ', '.join(f"{t} ({c})" for t, c in profile.topics[:5]),
+        "push_events": sum(1 for a in activities if a.get('type') == 'PushEvent'),
+        "pr_events": sum(1 for a in activities if a.get('type') == 'PullRequestEvent'),
+        "expertise": profile.basic_info.get('expertise_analysis'),
+    }
 
-# Facade for LLM Service
-class LLMService:
-    def __init__(self, provider: str = "google_gemini", prompt_type: str = "collaboration"):
-        self.llm_client = LLMClientFactory.get_client(provider)
-        self.prompt_builder = PromptBuilderFactory.get_builder(prompt_type)
-
-    def create_prompt(self, user_profiles: List[UserProfile]) -> str:
-        return self.prompt_builder.build(user_profiles)
-
-    async def analyze_collaboration(self, user_profiles: List[UserProfile]) -> CollaborationInsight:
-        prompt = self.create_prompt(user_profiles)
-        result = await self.llm_client.generate(prompt, CollaborationInsight)
-        return result
 
 def create_llm_prompt(user_profiles: List[UserProfile]) -> str:
-    return CollaborationPromptBuilder().build(user_profiles)
+    """Build collaboration analysis prompt using cached Jinja2 template."""
+    template = _get_template("collaboration")
+    users = [_extract_user_data(p) for p in user_profiles]
+    return template.render(users=users)
+
 
 async def create_quick_compatibility_prompt(user_profiles: List[UserProfile]) -> str:
-    """Create a focused prompt for just compatibility score and reasoning"""
-    prompt = """You are a GitHub compatibility expert. Analyze these developers and provide ONLY:
+    """Build quick compatibility prompt using cached Jinja2 template."""
+    template = _get_template("quick_compatibility")
+    users = [_extract_user_data(p) for p in user_profiles]
+    return template.render(users=users)
 
-1. **Compatibility Score (1-10)**: A single number between 1-10. You have to be optimistic about the score.
-2. **Compatibility Reasoning**: 2-3 sentences explaining the score based on their GitHub profiles, it should be optimistic, and acknowledge the contrast in user's profiles as a postive factor and give input on how they can collaborate and acknowledgde the users by their names.
 
-Format your response exactly like this:
-Score: [number]
-Reasoning: [2-3 sentences]
+# =============================================================================
+# ASYNC GEMINI CLIENT
+# =============================================================================
 
-Here are the user profiles:
-
-"""
-    for i, profile in enumerate(user_profiles, 1):
-        
-        top_languages = [f"{lang} ({bytes:,} bytes)" for lang, bytes in profile.languages[:3]]
-        
-        prompt += f"""
-## User {i}: {profile.username}
-- Top Languages: {', '.join(top_languages)}
-- Bio: {profile.basic_info.get('bio', 'No bio available')}
-"""
+class AsyncGeminiClient:
+    """Pure async Gemini API client using aiohttp."""
     
-    prompt += "\nNow provide ONLY the score and reasoning in the exact format specified above."
-    return prompt
+    _instance = None
+    _session: aiohttp.ClientSession = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+    
+    @classmethod
+    async def get_session(cls) -> aiohttp.ClientSession:
+        """Get or create aiohttp session."""
+        if cls._session is None or cls._session.closed:
+            timeout = aiohttp.ClientTimeout(total=30, connect=5)
+            cls._session = aiohttp.ClientSession(timeout=timeout)
+        return cls._session
+    
+    @classmethod
+    async def close(cls):
+        """Close the session."""
+        if cls._session and not cls._session.closed:
+            await cls._session.close()
+            cls._session = None
+    
+    async def generate(self, prompt: str, temperature: float = 0.3, max_tokens: int = 500) -> str:
+        """Generate content from Gemini API."""
+        settings = get_settings()
+        if not settings.google_api_key:
+            raise HTTPException(status_code=500, detail="Google API key not configured")
+        
+        session = await self.get_session()
+        
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "temperature": temperature,
+                "maxOutputTokens": max_tokens,
+            }
+        }
+        
+        url = f"{GEMINI_API_URL}?key={settings.google_api_key}"
+        
+        try:
+            async with session.post(url, json=payload) as response:
+                if response.status != 200:
+                    error_text = await response.text()
+                    logger.error(f"Gemini API error {response.status}: {error_text}")
+                    raise HTTPException(status_code=502, detail=f"Gemini API error: {response.status}")
+                
+                data = await response.json()
+                
+                # Extract text from response
+                candidates = data.get("candidates", [])
+                if not candidates:
+                    raise HTTPException(status_code=502, detail="No response from Gemini")
+                
+                content = candidates[0].get("content", {})
+                parts = content.get("parts", [])
+                if not parts:
+                    raise HTTPException(status_code=502, detail="Empty response from Gemini")
+                
+                return parts[0].get("text", "")
+                
+        except aiohttp.ClientError as e:
+            logger.error(f"Network error calling Gemini: {e}")
+            raise HTTPException(status_code=503, detail="LLM service unavailable")
 
-async def call_llm_api(prompt: str) -> CollaborationInsight:
-    service = LLMService()
-    return await service.llm_client.generate(prompt, CollaborationInsight)
+
+# Singleton instance
+_gemini = AsyncGeminiClient()
+
 
 async def call_llm_raw(prompt: str) -> str:
-    """Call LLM and get raw text response without schema parsing"""
-    service = LLMService()
-    # Get raw response from Gemini
-    loop = asyncio.get_event_loop()
-    try:
-        response = await loop.run_in_executor(
-            None,
-            lambda: service.llm_client.client.models.generate_content(
-                model="gemini-2.0-flash-lite",
-                contents=prompt,
-                config={
-                    "temperature": 0.3,
-                    "max_output_tokens": 500  
-                }
-            )
-        )
-        return response.text
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"LLM API call failed: {str(e)}")
+    """Call Gemini API asynchronously."""
+    return await _gemini.generate(prompt)
 
-def parse_compatibility_response(raw_response: str) -> tuple[int, str]:
-    """Parse the raw LLM response to extract score and reasoning"""
+
+def parse_compatibility_response(raw_response: str) -> CompatibilityResponse:
+    """
+    Parse LLM response to extract score, reasoning, and compatibility factors.
+    Returns a structured Pydantic model.
+
+    Expected format:
+        Score: <int>
+        Reasoning: <string>
+        Key Compatibility Factors:
+        - Shared Languages: <explanation>
+        - Project Sizes: <explanation>
+        - Contribution Activity: <explanation>
+        - Activity Heat: <explanation>
+    """
+    # Default values
+    score = 5
+    reasoning = "Analysis based on profile data"
+    factors: List[CompatibilityFactor] = []
+    
+    # Known factor labels in expected order
+    FACTOR_LABELS = [
+        "Shared Languages",
+        "Project Sizes", 
+        "Contribution Activity",
+        "Activity Heat"
+    ]
+
     try:
         lines = raw_response.strip().split('\n')
-        score = 5  # Default fallback
-        reasoning = "Analysis based on profile data"
         
-        for line in lines:
-            if line.startswith('Score:'):
+        for i, line in enumerate(lines):
+            line_stripped = line.strip()
+            
+            # Parse score
+            if line_stripped.startswith('Score:'):
                 try:
-                    score = int(line.split(':')[1].strip())
-                    score = max(1, min(10, score))  # Clamp between 1-10
-                except:
-                    score = 5
-            elif line.startswith('Reasoning:'):
-                reasoning = line.split(':', 1)[1].strip()
-                break
-        
-        return score, reasoning
+                    score_str = line_stripped.split(':', 1)[1].strip()
+                    # Handle cases like "8/10" or just "8"
+                    score_match = re.match(r'(\d+)', score_str)
+                    if score_match:
+                        score = int(score_match.group(1))
+                except (ValueError, IndexError):
+                    pass
+            
+            # Parse reasoning
+            elif line_stripped.startswith('Reasoning:'):
+                reasoning = line_stripped.split(':', 1)[1].strip()
+            
+            # Parse compatibility factors
+            elif line_stripped.startswith('-'):
+                # Remove leading dash and whitespace
+                factor_text = line_stripped.lstrip('-').strip()
+                
+                # Check if this matches one of our known labels
+                # Format: "Label: explanation" or "**Label:** explanation"
+                for label in FACTOR_LABELS:
+                    # Handle both "Label:" and "**Label:**" formats
+                    patterns = [
+                        f"**{label}:**",
+                        f"**{label}**:",
+                        f"{label}:",
+                    ]
+                    
+                    for pattern in patterns:
+                        if factor_text.startswith(pattern):
+                            explanation = factor_text[len(pattern):].strip()
+                            factors.append(CompatibilityFactor(
+                                label=label,
+                                explanation=explanation
+                            ))
+                            break
+                    else:
+                        continue
+                    break  # Found a match, stop checking patterns
+                    
     except Exception as e:
-        logging.warning(f"Failed to parse LLM response: {e}")
-        return 5, "Analysis based on profile data"
+        logger.warning(f"Failed to parse LLM response: {e}")
+    
+    # Ensure we have all 4 factors with defaults if missing
+    existing_labels = {f.label for f in factors}
+    for label in FACTOR_LABELS:
+        if label not in existing_labels:
+            factors.append(CompatibilityFactor(
+                label=label,
+                explanation="Data not available"
+            ))
+    
+    # Sort factors to match expected order
+    factors_sorted = sorted(
+        factors, 
+        key=lambda f: FACTOR_LABELS.index(f.label) if f.label in FACTOR_LABELS else 99
+    )
+    
+    return CompatibilityResponse(
+        score=score,
+        reasoning=reasoning,
+        compatibility_factors=factors_sorted
+    )
+
+
+# Cleanup function for app shutdown
+async def cleanup_llm_client():
+    """Close the async client session."""
+    await AsyncGeminiClient.close()

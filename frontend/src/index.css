@@ -130,3 +130,60 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Avatar Shimmer Border Effect */
+@keyframes shimmer-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.avatar-shimmer {
+  position: relative;
+  display: inline-block;
+  padding: 3px;
+  border-radius: 50%;
+  background: #222;
+  transition: all 0.3s ease;
+}
+
+.avatar-shimmer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  padding: 3px;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 60deg,
+    #5BC0BE 120deg,
+    #007FFF 180deg,
+    #2D3047 240deg,
+    transparent 300deg,
+    transparent 360deg
+  );
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.avatar-shimmer-wrapper:hover .avatar-shimmer::before {
+  opacity: 1;
+  animation: shimmer-rotate 2s linear infinite;
+}
+
+.avatar-shimmer img {
+  display: block;
+  border-radius: 50%;
+}

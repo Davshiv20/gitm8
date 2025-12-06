@@ -130,7 +130,7 @@ export function AnimatedCircularProgressBar({
       </div>
     </div>
     {label && (
-      <span style={{ marginTop: STYLING.SPACING.SMALL }} className="mt-2 text-md font-medium text-gray-700 text-center">
+      <span style={{ marginTop: STYLING.SPACING.SMALL }} className="mt-2 text-md font-bold text-gray-700 text-center">
         {label}
       </span>
     )}
@@ -154,8 +154,8 @@ const CompatibilityScore: React.FC<CompatibilityScoreProps> = ({ score, classNam
     <div className="flex flex-col">
       <AnimatedCircularProgressBar
         value={animatedScore}
-        gaugePrimaryColor="#1F363D"
-        gaugeSecondaryColor="#70A9A1"
+        gaugePrimaryColor="#020122"
+        gaugeSecondaryColor="#6B5E62"
         className={className}
         label={label} 
       />

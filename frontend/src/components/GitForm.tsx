@@ -125,7 +125,7 @@ export default function GitForm({
   return (
     <div className="flex items-center justify-center min-h-[unset] bg-transparent p-0 font-sans antialiased">
       <div
-        className="max-w-md mx-auto rounded-xl border-2 border-white/60 bg-white/70 backdrop-blur-xl shadow-2xl"
+        className="max-w-md mx-auto rounded-xl border-2 border-white/60 backdrop-blur-xl bg-transparent shadow-[0_0_10px_0_rgba(0,0,0,0.5)]"
         style={{ padding: STYLING.PADDING.FORM_CONTAINER }}
       >
         <div

@@ -234,13 +234,13 @@ export const CONFIG = {
     MIN_Y: 100,
     MAX_Y: 400,
     VELOCITY_X: 0.9,
-    VELOCITY_Y: 0.3,
+    VELOCITY_Y: 0.9,
     RANDOM_CHANCE: 0.01,
     VELOCITY_CLAMP: 0.4,
     INITIAL_X: 50,
     INITIAL_Y: 200,
-    BOUNCE_FACTOR: 0.7,
-    RANDOM_SPEED_FACTOR: 0.6
+    BOUNCE_FACTOR: 0.9  ,
+    RANDOM_SPEED_FACTOR: 0.8
   }
 } as const;
 

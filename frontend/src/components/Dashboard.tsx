@@ -428,14 +428,14 @@ export default function Dashboard({
     <div
       className="min-h-screen"
       style={{
-        background: 'radial-gradient(circle 800px at 100% 200px, #FF621F, #E6E6E6)',
+        background: 'radial-gradient(circle 800px at 100% 200px, #5BC0BE , #E8E9ED)',
         transition: 'background 2s',
       }}
     >
-      <div className="shadow-[12px_#222] border-b border-gray-900">
-        <div className="max-w-7xl mx-auto" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
+      <div className="shadow-[12px_#222] border-b-4 border-gray-900"  >
+        <div className="max-w-full mx-auto px-4" style={{ paddingLeft: '16px', paddingRight: '16px', width: '100%' }}>
           <div
-            className="flex flex-col lg:flex-row lg:justify-between lg:items-center"
+            className="flex flex-col lg:flex-row  lg:items-center"
             style={{
               paddingTop: '24px',
               paddingBottom: '24px',
@@ -447,28 +447,27 @@ export default function Dashboard({
             <div>
               <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">GitHub Compatibility Dashboard</h1>
               <p className="text-sm text-gray-500" style={{ marginTop: '4px' }}>
-                Comprehensive analysis of {users.length} developers
+                Comprehensive analysis of {users.map((user)  => user.username).join(', ')}
               </p>
             </div>
-            <div className="flex flex-wrap items-center" style={{ gap: '16px' }}>
+            <div className="flex flex-wrap items-end" style={{ gap : "16px", marginLeft: 'auto' }}>
               {users.map((user) => (
                 <a
                   key={user.username}
                   href={`https://github.com/${user.username}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center"
+                  className="flex items-center avatar-shimmer-wrapper"
                   style={{ gap: '8px', textDecoration: 'none' }}
                 >
-                  <img
-                    className="rounded-full border-4 border-[#222] hover:border-gray-600"
-                    style={{ height: '48px', width: '48px' }}
-                    src={user.avatar_url}
-                    alt={user.username}
-                  />
-                  <span className="text-md font-bold text-gray-900 hover:text-gray-600">
-                    {user.username}
-                  </span>
+                  <div className="avatar-shimmer">
+                    <img
+                      className="rounded-full"
+                      style={{ height: '48px', width: '48px' }}
+                      src={user.avatar_url}
+                      alt={user.username}
+                    />
+                  </div>
                 </a>
               ))}
             </div>
@@ -477,7 +476,7 @@ export default function Dashboard({
       </div>
 
       <div
-        className="max-w-7xl mx-auto"
+        className="max-w-full mx-auto"
         style={{
           paddingLeft: '16px',
           paddingRight: '16px',
@@ -510,8 +509,8 @@ export default function Dashboard({
             <div className="flex justify-center" style={{ marginBottom: '24px' }}>
               <CompatibilityScore score={compatibilityScore} />
             </div>
-            <div className="max-w-3xl mx-auto">
-              <div className="rounded-lg text-left" style={{ padding: '16px' }}>
+            <div className="max-w-full mx-auto">
+              <div className="rounded-lg items-center justify-center" style={{ padding: '16px' }}>
                 <Typewriter
                   options={{
                     strings: [compatibilityReasoning],

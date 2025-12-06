@@ -101,6 +101,38 @@ export default function Home() {
           style={{
             background: 'radial-gradient(circle 800px at 100% 200px, #5BC0BE, transparent)',
             transition: 'background 2s',
+            zIndex: 1,
+          }}
+        />
+        <div
+          className="absolute inset-0"
+          style={{
+            background: 'radial-gradient(circle 600px at 0% 85%, #6D3D14, transparent)',
+            filter: 'blur(40px)',
+          }}
+
+        />
+         <div
+          className="absolute inset-0"
+          style={{
+            background: 'radial-gradient(circle 600px at 0% 0%, #2D3047, transparent)',
+            filter: 'blur(40px)',
+          }}
+          
+        />
+         <div
+          className="absolute inset-0"
+          style={{
+            background: 'radial-gradient(circle 600px at 100% 0%, #6D3D14, transparent)',
+            filter: 'blur(40px)',
+          }}
+        />
+        {/* Third radial gradient - bottom right for visual balance */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background: 'radial-gradient(circle 500px at 100% 90%, #2D3047, transparent)',
+            filter: 'blur(32px)',
           }}
         />
       </div>
