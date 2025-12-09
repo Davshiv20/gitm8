@@ -5,7 +5,7 @@ from typing import AsyncGenerator, Optional
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.pool import NullPool
 from config.settings import get_settings
-from database.models import Base
+from database.base import Base
 
 logger = logging.getLogger(__name__)
 
