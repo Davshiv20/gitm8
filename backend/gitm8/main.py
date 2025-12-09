@@ -127,7 +127,7 @@ app.add_middleware(
 
 # Include manual routes
 app.include_router(routes.router)
-app.include_router(portfolio_router)
+# app.include_router(portfolio_router)
 
 # ============================================================
 # AUTO-GENERATED ROUTES FROM DECORATORS
