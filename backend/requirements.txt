@@ -11,4 +11,4 @@ sqlalchemy>=2.0.0,<3.0.0
 alembic>=1.13.0,<2.0.0
 asyncpg>=0.29.0,<1.0.0
 upstash-redis>=1.0.0,<2.0.0
-google-cloud-sql-connector>=1.0.0,<2.0.0
+

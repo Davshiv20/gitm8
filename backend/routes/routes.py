@@ -1,7 +1,7 @@
 """
 API Routes for compatibility analysis.
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from models import (
     UserCompatibilityRequest, 
     QuickCompatibilityResponse,
@@ -9,7 +9,13 @@ from models import (
     CompatibilityFactor
 )
 from services.analytics_service import get_users_batch, UserProfileAnalyzer
-from services.llm_service import create_llm_prompt, create_quick_compatibility_prompt, call_llm_raw, parse_compatibility_response
+from services.llm_service import (
+    create_llm_prompt, 
+    create_quick_compatibility_prompt, 
+    parse_compatibility_response,
+    AsyncGeminiClient,
+    get_llm_client
+)
 import logging
 
 router = APIRouter()
@@ -61,10 +67,16 @@ async def analyze_compatibility(request: UserCompatibilityRequest):
 
 
 @router.post("/api/quick-compatibility", response_model=QuickCompatibilityResponse)
-async def quick_compatibility(request: UserCompatibilityRequest) -> QuickCompatibilityResponse:
-    """Fast endpoint for compatibility score and reasoning."""
+async def quick_compatibility(
+    request: UserCompatibilityRequest,
+    llm_client: AsyncGeminiClient = Depends(get_llm_client)
+) -> QuickCompatibilityResponse:
+    """Fast endpoint for compatibility score and reasoning with LLM analysis."""
     if len(request.usernames) < 2:
-        raise HTTPException(status_code=400, detail="At least 2 usernames required")
+        raise HTTPException(
+            status_code=400, 
+            detail="GitM8 requires at least 2 GitHub usernames for compatibility analysis"
+        )
     
     try:
         # Fetch ALL users in SINGLE API call (much faster than individual calls)
@@ -74,8 +86,8 @@ async def quick_compatibility(request: UserCompatibilityRequest) -> QuickCompati
         analyzer = UserProfileAnalyzer(user_profiles)
         
         # LLM analysis - returns structured Pydantic model
-        quick_prompt = await create_quick_compatibility_prompt(user_profiles)
-        raw_llm_response = await call_llm_raw(quick_prompt)
+        quick_prompt = create_quick_compatibility_prompt(user_profiles)
+        raw_llm_response = await llm_client.generate(quick_prompt)
         compatibility_result = parse_compatibility_response(raw_llm_response)
         
         # Get all chart data from SAME cached analyzer
@@ -96,7 +108,7 @@ async def quick_compatibility(request: UserCompatibilityRequest) -> QuickCompati
             compatibility_score=compatibility_result.score,
             compatibility_reasoning=compatibility_result.reasoning,
             compatibility_factors=[
-                CompatibilityFactor(label=f.label, explanation=f.explanation)
+                CompatibilityFactor(label=f.label, indicator=f.indicator)
                 for f in compatibility_result.compatibility_factors
             ],
             radar_chart_data=radar_chart_data,
@@ -106,8 +118,11 @@ async def quick_compatibility(request: UserCompatibilityRequest) -> QuickCompati
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Quick compatibility failed: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Quick compatibility check failed: {str(e)}")
+        logger.error(f"Quick compatibility failed: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500, 
+            detail="GitM8 encountered an error during compatibility analysis. Please try again."
+        )
 
 
 @router.get("/api/test-github-connection")

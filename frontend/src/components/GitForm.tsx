@@ -108,7 +108,7 @@ export default function GitForm({
           {user.username}
         </span>
       </div>
-      {users.length > minUsers && (
+
         <button
           type="button"
           onClick={() => onRemove(user.username)}
@@ -118,14 +118,13 @@ export default function GitForm({
         >
           <X size={16} />
         </button>
-      )}
     </div>
   )
 
   return (
     <div className="flex items-center justify-center min-h-[unset] bg-transparent p-0 font-sans antialiased">
       <div
-        className="max-w-md mx-auto rounded-xl border-2 border-white/60 backdrop-blur-xl bg-transparent shadow-[0_0_10px_0_rgba(0,0,0,0.5)]"
+        className="max-w-md mx-auto border-b-0.5 border-gray-200 rounded-xl backdrop-blur-xl bg-transparent shadow-[0px_10px_20px_0_rgba(0,0,0,0.5)]"
         style={{ padding: STYLING.PADDING.FORM_CONTAINER }}
       >
         <div
@@ -140,7 +139,7 @@ export default function GitForm({
         <Form method="post" onSubmit={handleSubmit}>
           <div className="flex flex-col gap-4">
             {users.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-4">
+              <div className="flex flex-wrap justify-center gap-4" style={{marginBottom: "12px", paddingLeft: "0.5rem", paddingRight: "0.5rem"}}>
                 {users.map((user) => (
                   <UserCard
                     key={user.username}

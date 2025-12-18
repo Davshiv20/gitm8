@@ -10,12 +10,18 @@ type User = {
   username: string
 }
 
+type CompatibilityFactor = {
+  label: string
+  indicator: string
+}
+
 type ResultsData = {
   score: number
   reasoning: string
   users: User[]
   radarData: RadarChartData
-  comparisonData?: any
+  comparisonData?: Record<string, unknown>
+  compatibilityFactors: CompatibilityFactor[]
 }
 
 export default function Results() {
@@ -27,6 +33,7 @@ export default function Results() {
       users={data.users}
       radarChartData={data.radarData}
       comparisonData={data.comparisonData}
+      compatibilityFactors={data.compatibilityFactors}
     />
   )
 }

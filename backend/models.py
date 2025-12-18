@@ -8,9 +8,10 @@ class UserCompatibilityRequest(BaseModel):
     usernames: list[str]
 
 class CompatibilityFactor(BaseModel):
-    """A single compatibility factor with label and explanation."""
+    """A single compatibility factor with label, indicator."""
     label: str = Field(..., description="Factor name (e.g., 'Shared Languages')")
-    explanation: str = Field(..., description="One-line explanation of this factor")
+    indicator: str = Field(..., description="Short indicator text displayed under the label")
+
 
 
 class QuickCompatibilityUser(BaseModel):

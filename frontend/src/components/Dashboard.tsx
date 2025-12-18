@@ -1,9 +1,9 @@
 
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, BarChart3, Code, Star, GitBranch, Activity, Info } from 'lucide-react'
+import { ChevronDown, ChevronRight, BarChart3, Code, Star, GitBranch, Activity, Info, Languages, GitFork, TrendingUp, Flame } from 'lucide-react'
 import LineChart from './LineChart'
-import CompatibilityScore from './CompatibilityScore'
 import Typewriter from 'typewriter-effect'
+import { COMPATIBILITY_LABELS } from './constants'
 
 interface User {
   avatar_url: string
@@ -14,11 +14,57 @@ interface RadarChartData {
   languages: Array<{ language: string; [username: string]: number | string }>
 }
 
+interface CompatibilityFactor {
+  label: string
+  indicator: string
+
+}
+
+interface UserActivityData {
+  pushes?: number
+  pull_requests?: number
+  issues?: number
+  stars?: number
+  commits?: number
+  releases?: number
+  forks?: number
+  repositories?: number
+  pr_reviews?: number
+}
+
+interface UserRepositoryData {
+  total_repos?: number
+  original_repos?: number
+  forked_repos?: number
+  public_repos?: number
+  private_repos?: number
+  total_stars?: number
+  total_forks?: number
+  total_watchers?: number
+  total_size_kb?: number
+  avg_repo_size?: number
+}
+
+interface UserLanguageData {
+  total_languages?: number
+  primary_language?: string
+  primary_language_percentage?: number
+  language_diversity?: number
+  total_code_bytes?: number
+  language_breakdown?: Record<string, number>
+}
+
+interface UserTopicData {
+  total_topics?: number
+  top_topics?: string[]
+  topic_diversity?: number
+}
+
 interface ComparisonData {
-  activity_comparison?: Array<{ label: string; [username: string]: any }>
-  repository_comparison?: Array<{ label: string; [username: string]: any }>
-  language_comparison?: Array<{ label: string; [username: string]: any }>
-  topic_comparison?: Array<{ label: string; [username: string]: any }>
+  activity_comparison?: Array<DataTableRow>
+  repository_comparison?: Array<DataTableRow>
+  language_comparison?: Array<DataTableRow>
+  topic_comparison?: Array<DataTableRow>
 }
 
 interface DashboardProps {
@@ -27,6 +73,7 @@ interface DashboardProps {
   users: User[]
   radarChartData: RadarChartData | null
   comparisonData?: ComparisonData | null
+  compatibilityFactors?: CompatibilityFactor[]
 }
 
 interface MetricCardProps {
@@ -110,9 +157,14 @@ const MetricCard = ({ title, value, icon, onClick, isClickable = false, tooltip 
   </div>
 )
 
+interface DataTableRow {
+  label: string
+  [username: string]: UserActivityData | UserRepositoryData | UserLanguageData | UserTopicData | string | string[]
+}
+
 interface DataTableProps {
   title: string
-  data: Array<{ [key: string]: any }>
+  data: Array<DataTableRow>
   users: User[]
   columns: Array<{ key: string; label: string; type?: 'number' | 'text' | 'array'; tooltip?: string }>
   isExpanded: boolean
@@ -205,23 +257,31 @@ const DataTable = ({ title, data, users, columns, isExpanded, onToggle }: DataTa
                           <span className="text-xs lg:text-sm font-medium text-gray-900 truncate">{user.username}</span>
                         </div>
                       </td>
-                      {columns.map((column) => (
-                        <td
-                          key={column.key}
-                          className="text-xs lg:text-sm text-gray-900"
-                          style={{
-                            paddingLeft: window.innerWidth >= 1024 ? '16px' : '8px',
-                            paddingRight: window.innerWidth >= 1024 ? '16px' : '8px',
-                            paddingTop: window.innerWidth >= 1024 ? '16px' : '12px',
-                            paddingBottom: window.innerWidth >= 1024 ? '16px' : '12px'
-                          }}
-                        >
-                          {column.type === 'array' && Array.isArray(userData[column.key]) 
-                            ? userData[column.key].join(', ')
-                            : userData[column.key] || 'N/A'
-                          }
-                        </td>
-                      ))}
+                      {columns.map((column) => {
+                        const cellValue = userData[column.key as keyof typeof userData]
+                        let displayValue: string
+                        if (column.type === 'array' && Array.isArray(cellValue)) {
+                          displayValue = (cellValue as string[]).join(', ')
+                        } else if (cellValue !== undefined && cellValue !== null) {
+                          displayValue = String(cellValue)
+                        } else {
+                          displayValue = 'N/A'
+                        }
+                        return (
+                          <td
+                            key={column.key}
+                            className="text-xs lg:text-sm text-gray-900"
+                            style={{
+                              paddingLeft: window.innerWidth >= 1024 ? '16px' : '8px',
+                              paddingRight: window.innerWidth >= 1024 ? '16px' : '8px',
+                              paddingTop: window.innerWidth >= 1024 ? '16px' : '12px',
+                              paddingBottom: window.innerWidth >= 1024 ? '16px' : '12px'
+                            }}
+                          >
+                            {displayValue}
+                          </td>
+                        )
+                      })}
                     </tr>
                   )
                 })}
@@ -234,12 +294,89 @@ const DataTable = ({ title, data, users, columns, isExpanded, onToggle }: DataTa
   )
 }
 
+const CompatibilityFactorsWidget = ({ factors }: { factors: CompatibilityFactor[] }) => {
+  const getFactorIcon = (label: string) => {
+    const lowerLabel = label.toLowerCase()
+    if (lowerLabel.includes('language')) {
+      return <Languages className="w-6 h-6" />
+    } else if (lowerLabel.includes('project') || lowerLabel.includes('repository')) {
+      return <GitFork className="w-6 h-6" />
+    } else if (lowerLabel.includes('activity') || lowerLabel.includes('contribution')) {
+      return <TrendingUp className="w-6 h-6" />
+    } else if (lowerLabel.includes('heat') || lowerLabel.includes('peak')) {
+      return <Flame className="w-6 h-6" />
+    }
+    return <Activity className="w-6 h-6" />
+  }
+
+  const getFactorColor = (index: number) => {
+    const colors = [
+      'bg-green-50 text-green-600',
+      'bg-blue-50 text-blue-600',
+      'bg-purple-50 text-purple-600',
+      'bg-yellow-50 text-yellow-600',
+      'bg-orange-50 text-orange-600'
+    ]
+    return colors[index % colors.length]
+  }
+
+  if (!factors || factors.length === 0) {
+    return null
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: '16px' }}>
+      {factors.map((factor, index) => (
+        <div
+          key={index}
+          className="bg-white rounded-lg shadow-[6px_8px_0px_#222] hover:shadow-md border-4 border-gray-900 transition-all duration-200"
+          style={{ padding: '16px' }}
+        >
+          <div className="flex items-start gap-4 ">
+            <div className={`${getFactorColor(index)}`} style={{ padding: '12px' }}>
+              {getFactorIcon(factor.label)}
+            </div>
+            <div className="flex-1 min-w-0 flex flex-col justify-start">
+              <Tooltip content={factor.indicator}>
+                <h3
+                  className="text-base font-semibold text-gray-900 mb-2 cursor-help truncate"
+                  style={{
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}
+                  title={factor.label}
+                >
+                  {factor.label}
+                </h3>
+                <p
+                  className="text-sm text-gray-600 text-left w-full truncate"
+                  style={{
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    width: '100%',
+                  }}
+                  title={factor.indicator}
+                >
+                  {factor.indicator}
+                </p>
+              </Tooltip>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function Dashboard({ 
   compatibilityScore, 
   compatibilityReasoning, 
   users, 
   radarChartData, 
-  comparisonData 
+  comparisonData,
+  compatibilityFactors = []
 }: DashboardProps) {
   const [expandedSections, setExpandedSections] = useState<{ [key: string]: boolean }>({
     activity: false,
@@ -287,10 +424,22 @@ export default function Dashboard({
     const metrics = []
 
     if (activityData) {
-      const totalPRs = users.reduce((sum, user) => sum + (activityData[user.username]?.pull_requests || 0), 0)
-      const totalCommits = users.reduce((sum, user) => sum + (activityData[user.username]?.commits || 0), 0)
-      const totalIssues = users.reduce((sum, user) => sum + (activityData[user.username]?.issues || 0), 0)
-      const totalReleases = users.reduce((sum, user) => sum + (activityData[user.username]?.releases || 0), 0)
+      const totalPRs = users.reduce((sum, user) => {
+        const userData = activityData[user.username]
+        return sum + (userData && typeof userData === 'object' && 'pull_requests' in userData ? (userData as UserActivityData).pull_requests || 0 : 0)
+      }, 0)
+      const totalCommits = users.reduce((sum, user) => {
+        const userData = activityData[user.username]
+        return sum + (userData && typeof userData === 'object' && 'commits' in userData ? (userData as UserActivityData).commits || 0 : 0)
+      }, 0)
+      const totalIssues = users.reduce((sum, user) => {
+        const userData = activityData[user.username]
+        return sum + (userData && typeof userData === 'object' && 'issues' in userData ? (userData as UserActivityData).issues || 0 : 0)
+      }, 0)
+      const totalReleases = users.reduce((sum, user) => {
+        const userData = activityData[user.username]
+        return sum + (userData && typeof userData === 'object' && 'releases' in userData ? (userData as UserActivityData).releases || 0 : 0)
+      }, 0)
       
       metrics.push(
         { 
@@ -329,11 +478,26 @@ export default function Dashboard({
     }
 
     if (repoData) {
-      const totalRepos = users.reduce((sum, user) => sum + (repoData[user.username]?.total_repos || 0), 0)
-      const totalStars = users.reduce((sum, user) => sum + (repoData[user.username]?.total_stars || 0), 0)
-      const totalForks = users.reduce((sum, user) => sum + (repoData[user.username]?.total_forks || 0), 0)
-      const publicRepos = users.reduce((sum, user) => sum + (repoData[user.username]?.public_repos || 0), 0)
-      const totalWatchers = users.reduce((sum, user) => sum + (repoData[user.username]?.total_watchers || 0), 0)
+      const totalRepos = users.reduce((sum, user) => {
+        const userData = repoData[user.username]
+        return sum + (userData && typeof userData === 'object' && 'total_repos' in userData ? (userData as UserRepositoryData).total_repos || 0 : 0)
+      }, 0)
+      const totalStars = users.reduce((sum, user) => {
+        const userData = repoData[user.username]
+        return sum + (userData && typeof userData === 'object' && 'total_stars' in userData ? (userData as UserRepositoryData).total_stars || 0 : 0)
+      }, 0)
+      const totalForks = users.reduce((sum, user) => {
+        const userData = repoData[user.username]
+        return sum + (userData && typeof userData === 'object' && 'total_forks' in userData ? (userData as UserRepositoryData).total_forks || 0 : 0)
+      }, 0)
+      const publicRepos = users.reduce((sum, user) => {
+        const userData = repoData[user.username]
+        return sum + (userData && typeof userData === 'object' && 'public_repos' in userData ? (userData as UserRepositoryData).public_repos || 0 : 0)
+      }, 0)
+      const totalWatchers = users.reduce((sum, user) => {
+        const userData = repoData[user.username]
+        return sum + (userData && typeof userData === 'object' && 'total_watchers' in userData ? (userData as UserRepositoryData).total_watchers || 0 : 0)
+      }, 0)
 
       
       metrics.push(
@@ -381,12 +545,25 @@ export default function Dashboard({
     }
 
     if (langData) {
-      const avgLanguages = users.reduce((sum, user) => sum + (langData[user.username]?.total_languages || 0), 0) / users.length
-      const totalCodeBytes = users.reduce((sum, user) => sum + (langData[user.username]?.total_code_bytes || 0), 0)
-      const maxLanguages = Math.max(...users.map(user => langData[user.username]?.total_languages || 0))
+      const avgLanguages = users.reduce((sum, user) => {
+        const userData = langData[user.username]
+        return sum + (userData && typeof userData === 'object' && 'total_languages' in userData ? (userData as UserLanguageData).total_languages || 0 : 0)
+      }, 0) / users.length
+      const totalCodeBytes = users.reduce((sum, user) => {
+        const userData = langData[user.username]
+        return sum + (userData && typeof userData === 'object' && 'total_code_bytes' in userData ? (userData as UserLanguageData).total_code_bytes || 0 : 0)
+      }, 0)
+      const maxLanguages = Math.max(...users.map(user => {
+        const userData = langData[user.username]
+        return userData && typeof userData === 'object' && 'total_languages' in userData ? (userData as UserLanguageData).total_languages || 0 : 0
+      }))
       
       // Find user with max languages and get their languages
-      const userWithMaxLanguages = users.find(user => (langData[user.username]?.total_languages || 0) === maxLanguages)
+      const userWithMaxLanguages = users.find(user => {
+        const userData = langData[user.username]
+        const userLangCount = userData && typeof userData === 'object' && 'total_languages' in userData ? (userData as UserLanguageData).total_languages || 0 : 0
+        return userLangCount === maxLanguages
+      })
       const maxLanguagesList = userWithMaxLanguages ? 
         (radarChartData?.languages?.map(lang => lang.language).slice(0, maxLanguages).join(', ') || 'N/A') : 
         'N/A'
@@ -450,27 +627,30 @@ export default function Dashboard({
                 Comprehensive analysis of {users.map((user)  => user.username).join(', ')}
               </p>
             </div>
-            <div className="flex flex-wrap items-end" style={{ gap : "16px", marginLeft: 'auto' }}>
-              {users.map((user) => (
-                <a
-                  key={user.username}
-                  href={`https://github.com/${user.username}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center avatar-shimmer-wrapper"
-                  style={{ gap: '8px', textDecoration: 'none' }}
-                >
-                  <div className="avatar-shimmer">
-                    <img
-                      className="rounded-full"
-                      style={{ height: '48px', width: '48px' }}
-                      src={user.avatar_url}
-                      alt={user.username}
-                    />
-                  </div>
-                </a>
-              ))}
-            </div>
+            <div className="flex flex-wrap items-end" style={{ marginLeft: 'auto' }}>
+  {users.map((user, index) => (
+    <a
+      key={user.username}
+      href={`https://github.com/${user.username}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center avatar-shimmer-wrapper"
+      style={{ 
+        marginLeft: index === 0 ? '0' : '-12px',
+        textDecoration: 'none' 
+      }}
+    >
+      <div className="avatar-shimmer">
+        <img
+          className="rounded-full border-2 avatar-shimmer-wrapper"
+          style={{ height: '48px', width: '48px' }}
+          src={user.avatar_url}
+          alt={user.username}
+        />
+      </div>
+    </a>
+  ))}
+</div>
           </div>
         </div>
       </div>
@@ -484,7 +664,6 @@ export default function Dashboard({
           paddingBottom: 0
         }}
       >
-        {/* Summary Metrics */}
         <div
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
           style={{
@@ -497,19 +676,43 @@ export default function Dashboard({
           ))}
         </div>
 
-        {/* Compatibility Score Widget */}
         <div
           className="rounded-lg shadow-[8px_10px_0px_#222] hover:shadow-md border-4 border-gray-900"
           style={{ padding: '24px', marginBottom: '32px' }}
         >
           <div className="text-center">
-            <h2 className="text-2xl font-bold text-gray-900" style={{ marginBottom: '16px' }}>
+            <div className="flex flex-row ">
+              <div className="flex flex-col border-r-4 border-gray-900" style={{ width: '50%', marginTop: '32px' }}>
+                <h2 className="text-2xl font-bold text-gray-900" style={{ marginBottom: '24px' }}>
               Compatibility Analysis
             </h2>
-            <div className="flex justify-center" style={{ marginBottom: '24px' }}>
-              <CompatibilityScore score={compatibilityScore} />
+            <div className="mb-1" style={{ width: '100%' }}>
+              <div className="flex items-center justify-center gap-4 mb-2">
+                <div className="text-4xl font-bold text-gray-900">{compatibilityScore}</div>
+                <div className="flex-1 max-w-md">
+                  <div className=" bg-gray-200 rounded-full h-8 border-4 border-gray-900 overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-1000 ease-out flex items-center justify-end pr-2"
+                      style={{ width: `${(compatibilityScore / 10) * 100}%` }}
+                    >
+                      {compatibilityScore > 2 && (
+                        <span className="text-white text-sm font-bold">/ 10</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="text-lg font-semibold text-gray-700 mt-2">
+                {compatibilityScore >= 9 ? COMPATIBILITY_LABELS.PERFECT_MATCH :
+                 compatibilityScore >= 8 ? COMPATIBILITY_LABELS.GREAT_MATCH :
+                 compatibilityScore >= 6 ? COMPATIBILITY_LABELS.GOOD_POTENTIAL :
+                 compatibilityScore >= 4 ? COMPATIBILITY_LABELS.LOW_COMPATIBILITY :
+                 COMPATIBILITY_LABELS.VERY_LOW}
+              </div>
             </div>
-            <div className="max-w-full mx-auto">
+
+            {/* Reasoning */}
+            <div className="max-w-full mx-auto mb-6">
               <div className="rounded-lg items-center justify-center" style={{ padding: '16px' }}>
                 <Typewriter
                   options={{
@@ -522,6 +725,20 @@ export default function Dashboard({
                   }}
                 />
               </div>
+            </div>
+            </div>
+
+            {/* Compatibility Factors */}
+            <div className="flex flex-col" style={{ width: '50%' }}>
+            {compatibilityFactors && compatibilityFactors.length > 0 && (
+              <div style={{ marginTop: '32px' , paddingLeft: '16px'}}>
+              <h2 className="text-2xl font-bold text-gray-900" style={{ marginBottom: '24px' }}>
+              Key Compatibility Factors
+            </h2>
+                <CompatibilityFactorsWidget factors={compatibilityFactors} />
+              </div>
+            )}
+            </div>
             </div>
           </div>
         </div>

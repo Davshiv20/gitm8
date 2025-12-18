@@ -1,25 +1,39 @@
 """
-LLM Service - Async Gemini API integration with Jinja2 templated prompts.
+LLM Service - Async Gemini API integration with JSON output and dependency injection.
 """
+import asyncio
+import json
 import logging
-import aiohttp
 import re
 from functools import lru_cache
-from typing import List
+from typing import List, Optional
+import aiohttp
 from fastapi import HTTPException
 from jinja2 import Template
 from pydantic import BaseModel, Field, field_validator
 from models import UserProfile, CompatibilityFactor
 from config.settings import get_settings
 
+logger = logging.getLogger(__name__)
+
+# Gemini API endpoint
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+
+# Retry configuration
+MAX_RETRIES = 3
+INITIAL_RETRY_DELAY = 1.0  # seconds
+MAX_RETRY_DELAY = 8.0  # seconds
+
 
 class CompatibilityResponse(BaseModel):
-    """Structured response from LLM compatibility analysis (internal parsing)."""
-    score: int = Field(default=5, ge=1, le=10, description="Compatibility score 1-10")
-    reasoning: str = Field(default="Analysis based on profile data", description="2-3 sentence reasoning")
+    """Structured response from LLM compatibility analysis."""
+    score: int = Field(..., ge=1, le=10, description="Compatibility score 1-10")
+    reasoning: str = Field(..., min_length=10, description="2-3 sentence reasoning")
     compatibility_factors: List[CompatibilityFactor] = Field(
-        default_factory=list,
-        description="List of 4 compatibility factors"
+        ...,
+        min_length=4,
+        max_length=4,
+        description="Exactly 4 compatibility factors"
     )
     
     @field_validator('score', mode='before')
@@ -30,13 +44,10 @@ class CompatibilityResponse(BaseModel):
             try:
                 v = int(v)
             except ValueError:
-                return 5
-        return max(1, min(10, v))
-
-logger = logging.getLogger(__name__)
-
-# Gemini API endpoint
-GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent"
+                raise ValueError("Score must be a valid integer between 1-10")
+        if not (1 <= v <= 10):
+            raise ValueError(f"Score {v} must be between 1-10")
+        return v
 
 
 # =============================================================================
@@ -79,24 +90,38 @@ User Profiles:
 {% endfor %}"""),
 
         "quick_compatibility": Template("""
-You are a GitHub compatibility analyst. Analyze the developers and output ONLY:
+You are a GitHub compatibility analyst for GitM8. Analyze the developers and respond with ONLY valid JSON.
 
-1. **Compatibility Score (1–10)** — lean slightly optimistic.
-2. **Compatibility Reasoning** — 2–3 sentences referencing the users by name and explaining why their skills complement each other. Treat contrasts as positive.
-3. **Key Compatibility Factors** — return exactly 4 bullet points with SHORT explanations:
-   - **Shared Languages:** one-line explanation
-   - **Project Sizes:** one-line explanation
-   - **Contribution Activity:** one-line explanation
-   - **Activity Heat:** one-line explanation
+Output a JSON object with this EXACT structure:
+{
+  "score": <number 1-10>,
+  "reasoning": "<2-3 sentences referencing users by name, explaining skill complementarity>",
+  "compatibility_factors": [
+    {
+      "label": "Shared Languages",
+      "indicator": "<1-2 sentence summary>"
+    },
+    {
+      "label": "Project Sizes",
+      "indicator": "<1-2 sentence summary>"
+    },
+    {
+      "label": "Contribution Activity",
+      "indicator": "<1-2 sentence summary>"
+    },
+    {
+      "label": "Activity Heat",
+      "indicator": "<1-2 sentence summary>"
+    }
+  ]
+}
 
-STRICT OUTPUT FORMAT (NO deviation):
-Score: [number]
-Reasoning: [2–3 sentences]
-Key Compatibility Factors:
-- Shared Languages: [explanation]
-- Project Sizes: [explanation]
-- Contribution Activity: [explanation]
-- Activity Heat: [explanation]
+CRITICAL RULES:
+- Output ONLY valid JSON (no markdown, no code blocks, no extra text)
+- Score must be 1-10 (lean slightly optimistic)
+- Reasoning must reference users by name
+- Must include exactly 4 compatibility factors in the order shown
+- Treat contrasts as positive collaboration opportunities
 
 User Profiles:
 {% for user in users %}
@@ -111,11 +136,7 @@ User Profiles:
 {% for exp in user.expertise.primary_expertise[:3] %}  • {{ exp.language }} ({{ exp.level }}) - {{ exp.repos_count }} repos
 {% endfor %}{% endif %}
 {% endfor %}
-
-
-Return ONLY the formatted output above. No extra text.
 """)
-
     }
     return templates[template_name]
 
@@ -150,197 +171,297 @@ def create_llm_prompt(user_profiles: List[UserProfile]) -> str:
     return template.render(users=users)
 
 
-async def create_quick_compatibility_prompt(user_profiles: List[UserProfile]) -> str:
-    """Build quick compatibility prompt using cached Jinja2 template."""
+def create_quick_compatibility_prompt(user_profiles: List[UserProfile]) -> str:
+    """Build quick compatibility prompt using cached Jinja2 template (synchronous - no I/O)."""
     template = _get_template("quick_compatibility")
     users = [_extract_user_data(p) for p in user_profiles]
     return template.render(users=users)
 
 
 # =============================================================================
-# ASYNC GEMINI CLIENT
+# ASYNC GEMINI CLIENT WITH DEPENDENCY INJECTION
 # =============================================================================
 
 class AsyncGeminiClient:
-    """Pure async Gemini API client using aiohttp."""
+    """Async Gemini API client with retry logic and exponential backoff."""
     
-    _instance = None
-    _session: aiohttp.ClientSession = None
+    def __init__(self, session: aiohttp.ClientSession):
+        """Initialize with an aiohttp session (injected via DI)."""
+        self.session = session
+        self.settings = get_settings()
     
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-    
-    @classmethod
-    async def get_session(cls) -> aiohttp.ClientSession:
-        """Get or create aiohttp session."""
-        if cls._session is None or cls._session.closed:
-            timeout = aiohttp.ClientTimeout(total=30, connect=5)
-            cls._session = aiohttp.ClientSession(timeout=timeout)
-        return cls._session
-    
-    @classmethod
-    async def close(cls):
-        """Close the session."""
-        if cls._session and not cls._session.closed:
-            await cls._session.close()
-            cls._session = None
-    
-    async def generate(self, prompt: str, temperature: float = 0.3, max_tokens: int = 500) -> str:
-        """Generate content from Gemini API."""
-        settings = get_settings()
-        if not settings.google_api_key:
-            raise HTTPException(status_code=500, detail="Google API key not configured")
+    async def generate(
+        self, 
+        prompt: str, 
+        temperature: float = 0.3, 
+        max_tokens: int = 2000,
+        max_retries: int = MAX_RETRIES
+    ) -> str:
+        """
+        Generate content from Gemini API with retry logic and exponential backoff.
         
-        session = await self.get_session()
+        Args:
+            prompt: The prompt to send
+            temperature: Sampling temperature (0-1)
+            max_tokens: Maximum tokens to generate
+            max_retries: Maximum retry attempts for transient failures
+            
+        Returns:
+            Generated text response
+            
+        Raises:
+            HTTPException: On API errors or validation failures
+        """
+        if not self.settings.google_api_key:
+            logger.error("Google API key not configured")
+            raise HTTPException(
+                status_code=500, 
+                detail="GitM8 analysis service is not configured. Please contact support."
+            )
         
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {
                 "temperature": temperature,
                 "maxOutputTokens": max_tokens,
+                "responseMimeType": "application/json"  # Request JSON output
             }
         }
         
-        url = f"{GEMINI_API_URL}?key={settings.google_api_key}"
+        url = f"{GEMINI_API_URL}?key={self.settings.google_api_key}"
         
-        try:
-            async with session.post(url, json=payload) as response:
-                if response.status != 200:
-                    error_text = await response.text()
-                    logger.error(f"Gemini API error {response.status}: {error_text}")
-                    raise HTTPException(status_code=502, detail=f"Gemini API error: {response.status}")
+        last_exception = None
+        retry_delay = INITIAL_RETRY_DELAY
+        
+        for attempt in range(max_retries):
+            try:
+                async with self.session.post(url, json=payload) as response:
+                    if response.status == 200:
+                        raw = await response.text()
+                        
+                        # Parse Gemini response
+                        try:
+                            data = json.loads(raw)
+                        except json.JSONDecodeError as e:
+                            logger.error(f"Invalid JSON from Gemini API: {raw[:500]}")
+                            raise HTTPException(
+                                status_code=502,
+                                detail="GitM8 received an invalid response from the analysis service. Please try again."
+                            )
+                        
+                        candidates = data.get("candidates", [])
+                        if not candidates:
+                            logger.warning(f"No candidates in Gemini response: {data}")
+                            raise HTTPException(
+                                status_code=502,
+                                detail="GitM8 analysis service returned an empty response. Please try again."
+                            )
+                        
+                        content = candidates[0].get("content", {})
+                        parts = content.get("parts", [])
+                        if not parts:
+                            logger.warning(f"No parts in Gemini response: {content}")
+                            raise HTTPException(
+                                status_code=502,
+                                detail="GitM8 analysis service returned an incomplete response. Please try again."
+                            )
+                        
+                        finish_reason = candidates[0].get("finishReason", "")
+                        if finish_reason == "MAX_TOKENS":
+                            logger.warning("Response truncated due to MAX_TOKENS")
+                            raise HTTPException(
+                                status_code=502,
+                                detail="GitM8 analysis was too complex and exceeded limits. Please try with fewer users."
+                            )
+                        
+                        return parts[0].get("text", "")
+                    
+                    # Handle retryable errors (5xx, 429)
+                    elif response.status in (429, 500, 502, 503, 504):
+                        err = await response.text()
+                        logger.warning(
+                            f"Retryable error from Gemini (attempt {attempt + 1}/{max_retries}): "
+                            f"status={response.status}, error={err[:200]}"
+                        )
+                        last_exception = HTTPException(
+                            status_code=503,
+                            detail="GitM8 analysis service is temporarily unavailable. Please try again in a moment."
+                        )
+                        
+                        if attempt < max_retries - 1:
+                            await asyncio.sleep(retry_delay)
+                            retry_delay = min(retry_delay * 2, MAX_RETRY_DELAY)
+                            continue
+                    
+                    # Non-retryable errors (4xx except 429)
+                    else:
+                        err = await response.text()
+                        logger.error(f"Non-retryable Gemini API error {response.status}: {err}")
+                        raise HTTPException(
+                            status_code=502,
+                            detail=f"GitM8 analysis service encountered an error (code: {response.status}). Please try again."
+                        )
+            
+            except aiohttp.ClientError as e:
+                logger.warning(
+                    f"Network error calling Gemini (attempt {attempt + 1}/{max_retries}): {e}"
+                )
+                last_exception = HTTPException(
+                    status_code=503,
+                    detail="GitM8 couldn't reach the analysis service. Please check your connection and try again."
+                )
                 
-                data = await response.json()
-                
-                # Extract text from response
-                candidates = data.get("candidates", [])
-                if not candidates:
-                    raise HTTPException(status_code=502, detail="No response from Gemini")
-                
-                content = candidates[0].get("content", {})
-                parts = content.get("parts", [])
-                if not parts:
-                    raise HTTPException(status_code=502, detail="Empty response from Gemini")
-                
-                return parts[0].get("text", "")
-                
-        except aiohttp.ClientError as e:
-            logger.error(f"Network error calling Gemini: {e}")
-            raise HTTPException(status_code=503, detail="LLM service unavailable")
-
-
-# Singleton instance
-_gemini = AsyncGeminiClient()
-
-
-async def call_llm_raw(prompt: str) -> str:
-    """Call Gemini API asynchronously."""
-    return await _gemini.generate(prompt)
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(retry_delay)
+                    retry_delay = min(retry_delay * 2, MAX_RETRY_DELAY)
+                    continue
+            
+            except HTTPException:
+                # Re-raise HTTP exceptions immediately (no retry)
+                raise
+        
+        # All retries exhausted
+        if last_exception:
+            raise last_exception
+        
+        raise HTTPException(
+            status_code=503,
+            detail="GitM8 analysis service is temporarily unavailable after multiple attempts. Please try again later."
+        )
 
 
 def parse_compatibility_response(raw_response: str) -> CompatibilityResponse:
     """
-    Parse LLM response to extract score, reasoning, and compatibility factors.
-    Returns a structured Pydantic model.
-
-    Expected format:
-        Score: <int>
-        Reasoning: <string>
-        Key Compatibility Factors:
-        - Shared Languages: <explanation>
-        - Project Sizes: <explanation>
-        - Contribution Activity: <explanation>
-        - Activity Heat: <explanation>
-    """
-    # Default values
-    score = 5
-    reasoning = "Analysis based on profile data"
-    factors: List[CompatibilityFactor] = []
+    Parse LLM JSON response to extract score, reasoning, and compatibility factors.
+    Uses json.loads with regex fallback for robustness.
     
-    # Known factor labels in expected order
-    FACTOR_LABELS = [
-        "Shared Languages",
-        "Project Sizes", 
-        "Contribution Activity",
-        "Activity Heat"
-    ]
-
-    try:
-        lines = raw_response.strip().split('\n')
+    Args:
+        raw_response: Raw text response from LLM (should be JSON)
         
-        for i, line in enumerate(lines):
-            line_stripped = line.strip()
-            
-            # Parse score
-            if line_stripped.startswith('Score:'):
-                try:
-                    score_str = line_stripped.split(':', 1)[1].strip()
-                    # Handle cases like "8/10" or just "8"
-                    score_match = re.match(r'(\d+)', score_str)
-                    if score_match:
-                        score = int(score_match.group(1))
-                except (ValueError, IndexError):
-                    pass
-            
-            # Parse reasoning
-            elif line_stripped.startswith('Reasoning:'):
-                reasoning = line_stripped.split(':', 1)[1].strip()
-            
-            # Parse compatibility factors
-            elif line_stripped.startswith('-'):
-                # Remove leading dash and whitespace
-                factor_text = line_stripped.lstrip('-').strip()
-                
-                # Check if this matches one of our known labels
-                # Format: "Label: explanation" or "**Label:** explanation"
-                for label in FACTOR_LABELS:
-                    # Handle both "Label:" and "**Label:**" formats
-                    patterns = [
-                        f"**{label}:**",
-                        f"**{label}**:",
-                        f"{label}:",
-                    ]
-                    
-                    for pattern in patterns:
-                        if factor_text.startswith(pattern):
-                            explanation = factor_text[len(pattern):].strip()
-                            factors.append(CompatibilityFactor(
-                                label=label,
-                                explanation=explanation
-                            ))
-                            break
-                    else:
-                        continue
-                    break  # Found a match, stop checking patterns
-                    
+    Returns:
+        Structured CompatibilityResponse
+        
+    Raises:
+        HTTPException: If response cannot be parsed or is invalid
+    """
+    # Try to extract JSON if wrapped in markdown code blocks
+    json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', raw_response, re.DOTALL)
+    if json_match:
+        json_str = json_match.group(1)
+    else:
+        # Try to find raw JSON object
+        json_match = re.search(r'\{.*\}', raw_response, re.DOTALL)
+        if json_match:
+            json_str = json_match.group(0)
+        else:
+            json_str = raw_response.strip()
+    
+    try:
+        data = json.loads(json_str)
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse LLM JSON response: {raw_response[:500]}")
+        raise HTTPException(
+            status_code=502,
+            detail="GitM8 received a malformed response from the analysis service. Please try again."
+        )
+    
+    # Validate required fields
+    if "score" not in data:
+        logger.error(f"Missing 'score' in LLM response: {data}")
+        raise HTTPException(
+            status_code=502,
+            detail="GitM8 analysis is incomplete (missing score). Please try again."
+        )
+    
+    if "reasoning" not in data:
+        logger.error(f"Missing 'reasoning' in LLM response: {data}")
+        raise HTTPException(
+            status_code=502,
+            detail="GitM8 analysis is incomplete (missing reasoning). Please try again."
+        )
+    
+    if "compatibility_factors" not in data:
+        logger.error(f"Missing 'compatibility_factors' in LLM response: {data}")
+        raise HTTPException(
+            status_code=502,
+            detail="GitM8 analysis is incomplete (missing factors). Please try again."
+        )
+    
+    factors_data = data["compatibility_factors"]
+    if not isinstance(factors_data, list) or len(factors_data) != 4:
+        logger.error(f"Invalid compatibility_factors in LLM response: {factors_data}")
+        raise HTTPException(
+            status_code=502,
+            detail="GitM8 analysis returned an unexpected format. Please try again."
+        )
+    
+    # Parse compatibility factors
+    try:
+        factors = [
+            CompatibilityFactor(
+                label=f["label"],
+                indicator=f["indicator"]
+            )
+            for f in factors_data
+        ]
+    except (KeyError, TypeError) as e:
+        logger.error(f"Failed to parse compatibility factors: {e}, data={factors_data}")
+        raise HTTPException(
+            status_code=502,
+            detail="GitM8 analysis contains invalid factor data. Please try again."
+        )
+    
+    # Create and validate response
+    try:
+        return CompatibilityResponse(
+            score=data["score"],
+            reasoning=data["reasoning"],
+            compatibility_factors=factors
+        )
     except Exception as e:
-        logger.warning(f"Failed to parse LLM response: {e}")
-    
-    # Ensure we have all 4 factors with defaults if missing
-    existing_labels = {f.label for f in factors}
-    for label in FACTOR_LABELS:
-        if label not in existing_labels:
-            factors.append(CompatibilityFactor(
-                label=label,
-                explanation="Data not available"
-            ))
-    
-    # Sort factors to match expected order
-    factors_sorted = sorted(
-        factors, 
-        key=lambda f: FACTOR_LABELS.index(f.label) if f.label in FACTOR_LABELS else 99
-    )
-    
-    return CompatibilityResponse(
-        score=score,
-        reasoning=reasoning,
-        compatibility_factors=factors_sorted
-    )
+        logger.error(f"Failed to validate CompatibilityResponse: {e}, data={data}")
+        raise HTTPException(
+            status_code=502,
+            detail=f"GitM8 analysis validation failed: {str(e)}"
+        )
 
 
-# Cleanup function for app shutdown
+# =============================================================================
+# DEPENDENCY INJECTION HELPERS
+# =============================================================================
+
+_llm_client: Optional[AsyncGeminiClient] = None
+
+
+async def init_llm_client(session: aiohttp.ClientSession):
+    """Initialize LLM client with shared session (call in app startup)."""
+    global _llm_client
+    _llm_client = AsyncGeminiClient(session)
+    logger.info("✅ LLM client initialized")
+
+
 async def cleanup_llm_client():
-    """Close the async client session."""
-    await AsyncGeminiClient.close()
+    """Cleanup LLM client (call in app shutdown)."""
+    global _llm_client
+    _llm_client = None
+    logger.info("✅ LLM client cleaned up")
+
+
+def get_llm_client() -> AsyncGeminiClient:
+    """
+    Get LLM client instance (FastAPI dependency).
+    
+    Usage in routes:
+        async def analyze(
+            ...,
+            llm_client: AsyncGeminiClient = Depends(get_llm_client)
+        ):
+            response = await llm_client.generate(prompt)
+    """
+    if _llm_client is None:
+        logger.error("LLM client not initialized")
+        raise HTTPException(
+            status_code=503,
+            detail="GitM8 analysis service is not ready. Please try again in a moment."
+        )
+    return _llm_client

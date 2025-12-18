@@ -10,7 +10,12 @@ import sys
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from database.models import Base
+from database.base import Base
+# Import models if they exist (for migrations)
+try:
+    from database import models  # noqa: F401 - Import to register models with Base.metadata
+except ImportError:
+    pass  # Portfolio models not available, migrations will only handle base tables
 from config.settings import get_settings
 
 # this is the Alembic Config object

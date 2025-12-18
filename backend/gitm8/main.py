@@ -57,15 +57,28 @@ async def lifespan(app: FastAPI):
         # Initialize HTTP client session for external API calls
         logger.info("🌐 Initializing HTTP client session...")
         from services.github_graphql_service import GitHubGraphQLService
+        from services.llm_service import init_llm_client
+        import aiohttp
         
-        # Pre-create the session (optional - it will be created on first request anyway)
+        # Pre-create the GitHub session (optional - it will be created on first request anyway)
         # This ensures session is ready and validates GitHub token early
         try:
             await GitHubGraphQLService.get_session()
-            logger.info("✅ HTTP client session initialized successfully")
+            logger.info("✅ GitHub HTTP client session initialized successfully")
         except Exception as session_error:
-            logger.warning(f"⚠️  HTTP session initialization warning: {str(session_error)}")
+            logger.warning(f"⚠️  GitHub session initialization warning: {str(session_error)}")
             logger.warning("   Session will be created on first request")
+        
+        # Initialize LLM client with shared aiohttp session
+        try:
+            timeout = aiohttp.ClientTimeout(total=30, connect=5)
+            llm_session = aiohttp.ClientSession(timeout=timeout)
+            await init_llm_client(llm_session)
+            # Store session in app state for cleanup
+            app.state.llm_session = llm_session
+        except Exception as llm_error:
+            logger.error(f"❌ Failed to initialize LLM client: {str(llm_error)}")
+            raise
         
         logger.info("✅ All services initialized successfully")
         
@@ -88,8 +101,16 @@ async def lifespan(app: FastAPI):
     try:
         from services.github_graphql_service import GitHubGraphQLService
         from services.llm_service import cleanup_llm_client
+        
+        # Close GitHub session
         await GitHubGraphQLService.release_session()
+        
+        # Close LLM client and its session
         await cleanup_llm_client()
+        if hasattr(app.state, 'llm_session') and app.state.llm_session:
+            await app.state.llm_session.close()
+            logger.info("✅ LLM session closed")
+        
         logger.info("✅ HTTP client sessions closed successfully")
     except Exception as e:
         logger.error(f"⚠️  Error closing HTTP sessions: {str(e)}")
@@ -163,14 +184,18 @@ async def health_check():
         engine = get_engine()
         db_status = "connected" if engine else "disconnected"
         
-        # Check HTTP session
+        # Check HTTP sessions
         from services.github_graphql_service import GitHubGraphQLService
-        session_status = "active" if GitHubGraphQLService._shared_session else "not_initialized"
+        github_session_status = "active" if GitHubGraphQLService._shared_session else "not_initialized"
+        
+        # Check LLM client
+        llm_session_status = "active" if hasattr(app.state, 'llm_session') and app.state.llm_session else "not_initialized"
         
         return {
             "status": "healthy",
             "database": db_status,
-            "http_session": session_status
+            "github_session": github_session_status,
+            "llm_session": llm_session_status
         }
     except Exception as e:
         return {
