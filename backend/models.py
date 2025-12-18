@@ -17,22 +17,25 @@ class CompatibilityFactor(BaseModel):
 class QuickCompatibilityUser(BaseModel):
     """User info returned in quick compatibility response."""
     username: str
-    avatar_url: str
-    recent_activity: Optional[List[Dict[str, Any]]] = None
+    avatar_url: str = Field(..., serialization_alias="avatarUrl")
+    recent_activity: Optional[List[Dict[str, Any]]] = Field(None, serialization_alias="recentActivity")
 
 
 class QuickCompatibilityResponse(BaseModel):
     """Structured response for /api/quick-compatibility endpoint."""
+    model_config = {"populate_by_name": True}
+    
     success: bool = True
     users: List[QuickCompatibilityUser]
-    compatibility_score: int = Field(..., ge=1, le=10, description="Compatibility score 1-10")
-    compatibility_reasoning: str = Field(..., description="2-3 sentence reasoning")
+    compatibility_score: int = Field(..., ge=1, le=10, description="Compatibility score 1-10", serialization_alias="compatibilityScore")
+    compatibility_reasoning: str = Field(..., description="2-3 sentence reasoning", serialization_alias="compatibilityReasoning")
     compatibility_factors: List[CompatibilityFactor] = Field(
         ..., 
-        description="List of 4 compatibility factors"
+        description="List of 4 compatibility factors",
+        serialization_alias="compatibilityFactors"
     )
-    radar_chart_data: Dict[str, Any] = Field(default_factory=dict)
-    comparison_data: Dict[str, Any] = Field(default_factory=dict)
+    radar_chart_data: Dict[str, Any] = Field(default_factory=dict, serialization_alias="radarChartData")
+    comparison_data: Dict[str, Any] = Field(default_factory=dict, serialization_alias="comparisonData")
     timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
 
 class UserCompatibilityResponse(BaseModel):

@@ -7,16 +7,22 @@ type RadarChartData = {
 }
 
 type User = {
-  avatar_url: string
+  avatarUrl: string
   username: string
 }
 
+type CompatibilityFactor = {
+  label: string
+  indicator: string
+}
+
 type QuickResult = {
-  compatibility_score: number
-  compatibility_reasoning: string
+  compatibilityScore: number
+  compatibilityReasoning: string
   users: User[]
-  radar_chart_data: RadarChartData
-  comparison_data?: any
+  radarChartData: RadarChartData
+  comparisonData?: Record<string, unknown>
+  compatibilityFactors?: CompatibilityFactor[]
 }
 
 // Loader for results page - fetches data based on session storage
@@ -64,11 +70,12 @@ export async function compatibilityAction({ request }: ActionFunctionArgs) {
 
     // Store the result for the results page to access
     const formattedResult = {
-      score: result.compatibility_score,
-      reasoning: result.compatibility_reasoning,
+      score: result.compatibilityScore,
+      reasoning: result.compatibilityReasoning,
       users: result.users,
-      radarData: result.radar_chart_data,
-      comparisonData: result.comparison_data
+      radarData: result.radarChartData,
+      comparisonData: result.comparisonData,
+      compatibilityFactors: result.compatibilityFactors || []
     }
 
     sessionStorage.setItem('compatibilityResults', JSON.stringify(formattedResult))
