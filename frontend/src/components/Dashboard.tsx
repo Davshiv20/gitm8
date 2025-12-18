@@ -6,7 +6,7 @@ import Typewriter from 'typewriter-effect'
 import { COMPATIBILITY_LABELS } from './constants'
 
 interface User {
-  avatar_url: string
+  avatarUrl: string
   username: string
 }
 
@@ -251,7 +251,7 @@ const DataTable = ({ title, data, users, columns, isExpanded, onToggle }: DataTa
                               width: window.innerWidth >= 1024 ? '32px' : '24px',
                               marginRight: window.innerWidth >= 1024 ? '12px' : '8px'
                             }}
-                            src={user.avatar_url}
+                            src={user.avatarUrl}
                             alt={user.username}
                           />
                           <span className="text-xs lg:text-sm font-medium text-gray-900 truncate">{user.username}</span>
@@ -644,7 +644,7 @@ export default function Dashboard({
         <img
           className="rounded-full border-2 avatar-shimmer-wrapper"
           style={{ height: '48px', width: '48px' }}
-          src={user.avatar_url}
+          src={user.avatarUrl}
           alt={user.username}
         />
       </div>

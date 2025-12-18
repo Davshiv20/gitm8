@@ -11,7 +11,7 @@ type RadarChartData = {
 }
 
 type User = {
-  avatar_url: string
+  avatarUrl: string
   username: string
 }
 
