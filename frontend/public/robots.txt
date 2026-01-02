@@ -1,0 +1,10 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# Disallow admin or private pages if any
+# Disallow: /admin/
+
+# Sitemap location
+Sitemap: https://gitm8-fe.vercel.app/sitemap.xml
+

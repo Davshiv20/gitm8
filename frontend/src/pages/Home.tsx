@@ -32,6 +32,10 @@ function homeReducer(state: HomeState, action: HomeAction): HomeState {
     }
   }
 }
+function getCurrentYear(){
+  let currentYear = new Date().getFullYear()
+  return currentYear
+}
 
 export default function Home() {
   const radialRef = useRef<HTMLDivElement>(null)
@@ -154,8 +158,14 @@ export default function Home() {
         </h1>
 
         <div className="text-center" style={{ marginBottom: STYLING.SPACING.LARGE }}>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto font-mono tracking-tight">
+          <h2 className="text-xl text-gray-600 max-w-2xl mx-auto font-mono tracking-tight mb-4">
             {UI_TEXT.APP_SUBTITLE}
+          </h2>
+          <p className="text-base text-gray-500 max-w-3xl mx-auto leading-relaxed">
+            GitM8 is a powerful GitHub compatibility analyzer that helps developers find their perfect coding partners. 
+            Compare programming languages, analyze coding styles, and discover collaboration opportunities with AI-powered insights. 
+            Whether you're looking for a hackathon teammate, project collaborator, or just want to see how your GitHub profile 
+            matches with friends, GitM8 provides detailed compatibility scores and recommendations.
           </p>
         </div>
 
@@ -163,7 +173,43 @@ export default function Home() {
           <GitForm isLoading={isLoading} />
         </div>
 
-        <div className="flex justify-between w-full max-w-4xl mt-12" />
+        <div className="flex justify-between w-full max-w-4xl mt-12">
+          <footer className="w-full text-center py-8">
+            <div className="max-w-4xl mx-auto px-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Features</h3>
+                  <ul className="space-y-2 text-gray-600">
+                    <li><a href="/" className="hover:text-black transition-colors">GitHub Analysis</a></li>
+                    <li><a href="/" className="hover:text-black transition-colors">Compatibility Score</a></li>
+                    <li><a href="/" className="hover:text-black transition-colors">Language Comparison</a></li>
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Use Cases</h3>
+                  <ul className="space-y-2 text-gray-600">
+                    <li><a href="/" className="hover:text-black transition-colors">Find Coding Partners</a></li>
+                    <li><a href="/" className="hover:text-black transition-colors">Hackathon Teams</a></li>
+                    <li><a href="/" className="hover:text-black transition-colors">Project Collaboration</a></li>
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Resources</h3>
+                  <ul className="space-y-2 text-gray-600">
+                    <li><a href="https://github.com" target="_blank" rel="noopener noreferrer" className="hover:text-black transition-colors">GitHub</a></li>
+                    <li><a href="https://docs.github.com/en/graphql" target="_blank" rel="noopener noreferrer" className="hover:text-black transition-colors">GitHub API</a></li>
+                    <li><a href="https://vercel.com" target="_blank" rel="noopener noreferrer" className="hover:text-black transition-colors">Powered by Vercel</a></li>
+                  </ul>
+                </div>
+              </div>
+              <div className="border-t border-gray-300 pt-6">
+                <p className="text-gray-600 text-sm">
+                  © {getCurrentYear()} GitM8. Analyze GitHub profiles and find your perfect coding buddy.
+                </p>
+              </div>
+            </div>
+          </footer>
+        </div>
       </div>
     </div>
   )

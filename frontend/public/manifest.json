@@ -1,0 +1,32 @@
+{
+  "name": "GitM8 - GitHub Compatibility Analyzer",
+  "short_name": "GitM8",
+  "description": "Analyze GitHub profiles and discover how your coding style matches with friends",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1C2541",
+  "theme_color": "#5BC0BE",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/og-image.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["developer tools", "productivity", "utilities"],
+  "screenshots": [
+    {
+      "src": "/og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png"
+    }
+  ]
+}
+
