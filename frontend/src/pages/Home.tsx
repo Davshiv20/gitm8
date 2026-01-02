@@ -145,71 +145,70 @@ export default function Home() {
         <LandingCardWrapper showLandingCards={state.showLandingCards} />
       </div>
 
-      <div className={`relative z-10 flex transition duration-1000 delay-1000 flex-col items-center justify-center min-h-screen px-4 ${
+      <div className={`relative z-10 flex transition duration-1000 delay-1000 flex-col items-center justify-center min-h-screen px-4 pb-16 ${
         !state.initialAnimationComplete ? 'blur-sm' : ''
       }`}>
-        <div className="flex justify-center" style={{ marginBottom: STYLING.SPACING.MEDIUM }}>
-          <img src={gitm8} alt="gitm8 logo" height={COMPONENTS.APP.LOGO_DIMENSIONS.HEIGHT} width={COMPONENTS.APP.LOGO_DIMENSIONS.WIDTH} />
+        <div className="flex-1 flex flex-col items-center justify-center max-w-4xl w-full">
+          <div className="flex justify-center mb-6">
+            <img src={gitm8} alt="gitm8 logo" height={COMPONENTS.APP.LOGO_DIMENSIONS.HEIGHT} width={COMPONENTS.APP.LOGO_DIMENSIONS.WIDTH} className="drop-shadow-lg" />
+          </div>
+
+          <h1 className="text-6xl font-bold text-black relative mb-4">
+            {UI_TEXT.APP_TITLE}
+            <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-black to-transparent " />
+          </h1>
+
+        <div className="text-center" style={{ marginTop: STYLING.SPACING.LARGE, marginBottom: STYLING.SPACING.LARGE }}>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto font-mono tracking-tight">
+            {UI_TEXT.APP_SUBTITLE}
+          </p>
         </div>
 
-        <h1 className="text-5xl font-bold text-black relative" style={{ marginBottom: STYLING.SPACING.MEDIUM }}>
-          {UI_TEXT.APP_TITLE}
-          <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-black" />
-        </h1>
+          <div className="w-full max-w-2xl">
+            <GitForm isLoading={isLoading} />
+          </div>
+        </div>
 
-        <div className="text-center" style={{ marginBottom: STYLING.SPACING.LARGE }}>
-          <h2 className="text-xl text-gray-600 max-w-2xl mx-auto font-mono tracking-tight mb-4">
-            {UI_TEXT.APP_SUBTITLE}
-          </h2>
-          <p className="text-base text-gray-500 max-w-3xl mx-auto leading-relaxed">
+        {/* SEO Content - Hidden but accessible */}
+        <div className="sr-only">
+          <p>
             GitM8 is a powerful GitHub compatibility analyzer that helps developers find their perfect coding partners. 
             Compare programming languages, analyze coding styles, and discover collaboration opportunities with AI-powered insights. 
             Whether you're looking for a hackathon teammate, project collaborator, or just want to see how your GitHub profile 
             matches with friends, GitM8 provides detailed compatibility scores and recommendations.
           </p>
+          <nav aria-label="Site features">
+            <h3>Features</h3>
+            <ul>
+              <li><a href="/">GitHub Analysis</a></li>
+              <li><a href="/">Compatibility Score</a></li>
+              <li><a href="/">Language Comparison</a></li>
+            </ul>
+          </nav>
+          <nav aria-label="Use cases">
+            <h3>Use Cases</h3>
+            <ul>
+              <li><a href="/">Find Coding Partners</a></li>
+              <li><a href="/">Hackathon Teams</a></li>
+              <li><a href="/">Project Collaboration</a></li>
+            </ul>
+          </nav>
+          <nav aria-label="External resources">
+            <h3>Resources</h3>
+            <ul>
+              <li><a href="https://github.com/Davshiv20/gitm8" target="_blank" rel="noopener noreferrer">GitHub Repository</a></li>
+              <li><a href="https://docs.github.com/en/graphql" target="_blank" rel="noopener noreferrer">GitHub GraphQL API Documentation</a></li>
+              <li><a href="https://vercel.com" target="_blank" rel="noopener noreferrer">Powered by Vercel</a></li>
+            </ul>
+          </nav>
         </div>
-
-        <div className="flex justify-center">
-          <GitForm isLoading={isLoading} />
-        </div>
-
-        <div className="flex justify-between w-full max-w-4xl mt-12">
-          <footer className="w-full text-center py-8">
-            <div className="max-w-4xl mx-auto px-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Features</h3>
-                  <ul className="space-y-2 text-gray-600">
-                    <li><a href="/" className="hover:text-black transition-colors">GitHub Analysis</a></li>
-                    <li><a href="/" className="hover:text-black transition-colors">Compatibility Score</a></li>
-                    <li><a href="/" className="hover:text-black transition-colors">Language Comparison</a></li>
-                  </ul>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Use Cases</h3>
-                  <ul className="space-y-2 text-gray-600">
-                    <li><a href="/" className="hover:text-black transition-colors">Find Coding Partners</a></li>
-                    <li><a href="/" className="hover:text-black transition-colors">Hackathon Teams</a></li>
-                    <li><a href="/" className="hover:text-black transition-colors">Project Collaboration</a></li>
-                  </ul>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Resources</h3>
-                  <ul className="space-y-2 text-gray-600">
-                    <li><a href="https://github.com" target="_blank" rel="noopener noreferrer" className="hover:text-black transition-colors">GitHub</a></li>
-                    <li><a href="https://docs.github.com/en/graphql" target="_blank" rel="noopener noreferrer" className="hover:text-black transition-colors">GitHub API</a></li>
-                    <li><a href="https://vercel.com" target="_blank" rel="noopener noreferrer" className="hover:text-black transition-colors">Powered by Vercel</a></li>
-                  </ul>
-                </div>
-              </div>
-              <div className="border-t border-gray-300 pt-6">
-                <p className="text-gray-600 text-sm">
-                  © {getCurrentYear()} GitM8. Analyze GitHub profiles and find your perfect coding buddy.
-                </p>
-              </div>
-            </div>
-          </footer>
-        </div>
+        
+        {/* Visible Footer - Minimal and clean */}
+        <footer className="absolute bottom-4 left-0 right-0 text-center">
+          <p className="text-gray-500 text-xs">
+            © {getCurrentYear()} GitM8 · <a href="https://github.com/Davshiv20/gitm8" target="_blank" rel="noopener noreferrer" className="hover:text-black transition-colors underline">Open Source</a> · <a href="https://vercel.com" target="_blank" rel="noopener noreferrer" className="hover:text-black transition-colors">Powered by Vercel</a>
+          </p>
+        </footer>
       </div>
     </div>
   )
