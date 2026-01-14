@@ -1,12 +1,10 @@
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from fastapi.routing import APIRouter
 from routes import routes
 # from routes.portfolio_routes import router as portfolio_router
 from fastapi.middleware.cors import CORSMiddleware
 from config.settings import validate_settings, get_settings
-from database.db import init_db, get_engine
 
 # Configure logging
 logging.basicConfig(
@@ -31,28 +29,6 @@ async def lifespan(app: FastAPI):
         
         # Store settings in app state for access in routes
         app.state.settings = settings
-        
-        # Initialize and test database connection
-        logger.info("🔌 Initializing database connection...")
-        init_db()
-        
-        # Test database connection
-        try:
-            from sqlalchemy import text
-            engine = get_engine()
-
-            if engine is None:
-                logger.error("❌ Database engine not initialized")
-                raise RuntimeError("Database engine not initialized")
-
-            async with engine.connect() as conn:
-                result = await conn.execute(text("SELECT 1"))
-                result.scalar()
-                logger.info("✅ Database connection successful")
-        except Exception as db_error:
-            logger.error(f"❌ Database connection failed: {str(db_error)}")
-            logger.error("   Please check your DATABASE_URL and ensure PostgreSQL is running")
-            raise
         
         # Initialize HTTP client session for external API calls
         logger.info("🌐 Initializing HTTP client session...")
@@ -115,16 +91,6 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"⚠️  Error closing HTTP sessions: {str(e)}")
     
-    # Close database connections
-    logger.info("🔌 Closing database connections...")
-    try:
-        engine = get_engine()
-        if engine:
-            await engine.dispose()
-            logger.info("✅ Database connections closed successfully")
-    except Exception as e:
-        logger.error(f"⚠️  Error closing database: {str(e)}")
-    
     logger.info("✅ Shutdown complete")
 
 
@@ -180,10 +146,6 @@ async def root():
 async def health_check():
     """Health check endpoint for monitoring"""
     try:
-        # Check database
-        engine = get_engine()
-        db_status = "connected" if engine else "disconnected"
-        
         # Check HTTP sessions
         from services.github_graphql_service import GitHubGraphQLService
         github_session_status = "active" if GitHubGraphQLService._shared_session else "not_initialized"
@@ -193,7 +155,6 @@ async def health_check():
         
         return {
             "status": "healthy",
-            "database": db_status,
             "github_session": github_session_status,
             "llm_session": llm_session_status
         }

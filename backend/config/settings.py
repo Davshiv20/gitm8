@@ -219,11 +219,6 @@ class Settings(BaseSettings):
         logger.info(f"   - Server: {self.host}:{self.port}")
         logger.info(f"   - Debug mode: {self.debug}")
         logger.info(f"   - CORS origins: {', '.join(self.allowed_origins)}")
-
-        if self.database_url:
-            logger.info("   - Database URL: ✅ Set")
-        else:
-            logger.warning("   - Database URL: ⚠️  Not set (using default local PostgreSQL)")
         
         if self.google_api_key:
             logger.info("   - Google API key: ✅ Set")
